@@ -1,0 +1,670 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+/* ── REMINDER PAGE STYLES ── */
+.rem-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.rem-progress{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:16px}
+.rem-progress-ring{position:relative;width:52px;height:52px;flex-shrink:0}
+.rem-progress-ring svg{transform:rotate(-90deg)}
+.rem-progress-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--indigo)}
+.rem-progress-info{flex:1}
+.rem-progress-title{font-size:13px;font-weight:600;color:var(--text-primary)}
+.rem-progress-sub{font-size:11px;color:var(--text-muted);margin-top:2px}
+
+/* Reminder card */
+.rem-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;transition:all 0.2s;position:relative;overflow:hidden}
+.rem-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--rem-color,#6366f1);border-radius:3px 0 0 3px}
+.rem-card.done{opacity:0.6}
+.rem-card.done .rem-title{text-decoration:line-through;color:var(--text-muted)}
+.rem-check{width:34px;height:34px;border-radius:50%;border:2px solid var(--rem-color,#6366f1);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.2s;background:transparent}
+.rem-check.checked{background:var(--rem-color,#6366f1);border-color:var(--rem-color,#6366f1)}
+.rem-check:hover{transform:scale(1.1)}
+.rem-emoji{font-size:20px;flex-shrink:0}
+.rem-body{flex:1;min-width:0}
+.rem-title{font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rem-time{font-size:11px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rem-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.rem-action-btn{width:28px;height:28px;border-radius:8px;border:none;background:var(--bg-elevated);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all 0.2s}
+.rem-action-btn:hover{background:var(--bg-overlay);color:var(--text-primary)}
+
+/* Streak badge */
+.streak-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+
+/* Inactive toggle */
+.rem-inactive{opacity:0.45}
+
+/* Section header */
+.rem-section{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+
+/* Templates */
+.tpl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:16px}
+.tpl-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;cursor:pointer;transition:all 0.2s;position:relative}
+.tpl-card:hover{border-color:var(--indigo);transform:translateY(-1px)}
+.tpl-emoji{font-size:28px;margin-bottom:8px}
+.tpl-name{font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:4px}
+.tpl-desc{font-size:11px;color:var(--text-muted);line-height:1.4;margin-bottom:10px}
+.tpl-items{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.tpl-item-pill{font-size:9px;background:var(--bg-elevated);border-radius:6px;padding:2px 7px;color:var(--text-secondary)}
+.tpl-install-btn{width:100%;padding:8px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--indigo),var(--cyan));color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:opacity 0.2s}
+.tpl-install-btn:hover{opacity:0.88}
+.tpl-install-btn:disabled{opacity:0.5;cursor:not-allowed}
+
+/* Add/Edit Modal fields */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-label{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+.emoji-picker-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.emoji-opt{width:34px;height:34px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg-elevated);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.15s}
+.emoji-opt.selected,.emoji-opt:hover{border-color:var(--indigo);background:var(--indigo-glow)}
+.color-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.color-opt{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all 0.15s}
+.color-opt.selected,.color-opt:hover{border-color:var(--text-primary);transform:scale(1.15)}
+.days-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.day-btn{padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg-elevated);color:var(--text-secondary);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s}
+.day-btn.selected{border-color:var(--indigo);background:var(--indigo-glow);color:var(--indigo)}
+
+/* Milestone popup */
+.milestone-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.8);background:var(--bg-surface);border:2px solid var(--indigo);border-radius:20px;padding:32px 28px;text-align:center;z-index:9000;transition:all 0.35s cubic-bezier(0.16,1,0.3,1);opacity:0;pointer-events:none;min-width:280px}
+.milestone-popup.show{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:all}
+.milestone-emoji{font-size:52px;margin-bottom:12px;animation:mileSpin 0.6s ease-out}
+@keyframes mileSpin{from{transform:rotate(-15deg) scale(0.7)}to{transform:rotate(0) scale(1)}}
+
+@media(max-width:768px){
+  .form-row{grid-template-columns:1fr}
+  .tpl-grid{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-primary" onclick="openModal('addReminderModal')" style="padding:8px 14px;font-size:12px">
+  <i data-lucide="plus" style="width:14px;height:14px"></i> Tambah
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="page-content page-transition">
+  <div class="page-header">
+    <h1 class="page-title">⏰ Pengingat</h1>
+    <p class="page-subtitle">Kelola habit dan rutinitas harianmu</p>
+  </div>
+
+  <!-- Progress hari ini -->
+  <div class="rem-progress animate-fade-up" id="todayProgress">
+    <div class="rem-progress-ring">
+      <svg width="52" height="52" viewBox="0 0 52 52">
+        <circle cx="26" cy="26" r="21" fill="none" stroke="var(--bg-elevated)" stroke-width="5"/>
+        <circle cx="26" cy="26" r="21" fill="none" stroke="#6366f1" stroke-width="5"
+          stroke-dasharray="131.9" stroke-dashoffset="131.9"
+          stroke-linecap="round" id="progressCircle"/>
+      </svg>
+      <div class="rem-progress-pct" id="progressPct">0%</div>
+    </div>
+    <div class="rem-progress-info">
+      <div class="rem-progress-title" id="progressTitle">Loading...</div>
+      <div class="rem-progress-sub" id="progressSub">Memuat pengingat hari ini</div>
+    </div>
+  </div>
+
+  <!-- ── REMINDER LIST ── -->
+  <div id="reminderList"></div>
+
+  <!-- ── TEMPLATE SECTION ── -->
+  <div class="rem-section">📦 Template Library — Install Sekaligus</div>
+  {% for cat, tpls in tpl_by_cat.items() %}
+  <div style="margin-bottom:4px;font-size:12px;font-weight:600;color:var(--text-secondary);margin-top:12px">
+    {% if cat=='ibadah' %}🕌 Paket Ibadah
+    {% elif cat=='kesehatan' %}💪 Paket Kesehatan
+    {% elif cat=='produktivitas' %}⚡ Paket Produktivitas
+    {% else %}📦 {{ cat|title }}{% endif %}
+  </div>
+  <div class="tpl-grid">
+    {% for tpl in tpls %}
+    <div class="tpl-card" id="tpl-{{ tpl.id }}">
+      <div class="tpl-emoji">{{ tpl.emoji }}</div>
+      <div class="tpl-name">{{ tpl.name }}</div>
+      <div class="tpl-desc">{{ tpl.description }}</div>
+      <div class="tpl-items">
+        {% if tpl.template_data is iterable and tpl.template_data is not string %}
+          {% for item in tpl.template_data[:4] %}
+          <span class="tpl-item-pill">{{ item.emoji }} {{ item.title }}</span>
+          {% endfor %}
+          {% if tpl.template_data|length > 4 %}
+          <span class="tpl-item-pill">+{{ tpl.template_data|length - 4 }} lainnya</span>
+          {% endif %}
+        {% endif %}
+      </div>
+      <button class="tpl-install-btn" onclick="installTemplate({{ tpl.id }}, this)">
+        ⬇ Install Paket ({{ tpl.template_data|length if tpl.template_data is iterable else 0 }} pengingat)
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ══════════════════════════════════
+     ADD / EDIT REMINDER MODAL
+══════════════════════════════════ -->
+<div class="modal-overlay" id="addReminderModal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 style="font-size:16px;font-weight:700" id="modalTitle">➕ Tambah Pengingat</h3>
+      <button onclick="closeModal('addReminderModal')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;line-height:1">×</button>
+    </div>
+
+    <!-- Emoji picker -->
+    <div style="margin-bottom:14px">
+      <div class="field-label">Emoji</div>
+      <div class="emoji-picker-row" id="emojiPicker">
+        {% for e in ['🔔','🏃','💧','📖','💊','😴','🎯','📝','🌿','✨','💪','🧘','🍎','🌅','🌙','⚡'] %}
+        <div class="emoji-opt {{ 'selected' if loop.first }}" onclick="selectEmoji(this,{{ e | tojson }})">{{ e }}</div>
+        {% endfor %}
+      </div>
+      <input type="hidden" id="remEmoji" value="🔔">
+    </div>
+
+    <!-- Title & time -->
+    <div class="form-row" style="margin-bottom:14px">
+      <div>
+        <div class="field-label">Nama Pengingat</div>
+        <input class="form-input" type="text" id="remTitle" placeholder="Contoh: Lari pagi" maxlength="100">
+      </div>
+      <div>
+        <div class="field-label">Jam</div>
+        <input class="form-input" type="time" id="remTime" value="08:00">
+      </div>
+    </div>
+
+    <!-- Repeat type -->
+    <div style="margin-bottom:14px">
+      <div class="field-label">Pengulangan</div>
+      <select class="form-select" id="remRepeat" onchange="toggleRepeatDays()">
+        <option value="daily">Setiap hari</option>
+        <option value="weekdays">Hari kerja (Sen-Jum)</option>
+        <option value="weekend">Weekend (Sab-Min)</option>
+        <option value="weekly">Hari tertentu</option>
+      </select>
+    </div>
+
+    <!-- Day selector (weekly only) -->
+    <div id="daySelector" style="display:none;margin-bottom:14px">
+      <div class="field-label">Pilih hari</div>
+      <div class="days-row">
+        {% for d in [('Sen',0),('Sel',1),('Rab',2),('Kam',3),('Jum',4),('Sab',5),('Min',6)] %}
+        <button type="button" class="day-btn" data-day="{{ d[1] }}" onclick="toggleDay(this)">{{ d[0] }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Snooze & category -->
+    <div class="form-row" style="margin-bottom:14px">
+      <div>
+        <div class="field-label">Snooze (menit)</div>
+        <select class="form-select" id="remSnooze">
+          <option value="10">10 menit</option>
+          <option value="15">15 menit</option>
+          <option value="30" selected>30 menit</option>
+          <option value="60">1 jam</option>
+          <option value="120">2 jam</option>
+          <option value="0">Tidak ada</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">Kategori</div>
+        <select class="form-select" id="remCategory">
+          <option value="general">Umum</option>
+          <option value="ibadah">Ibadah</option>
+          <option value="kesehatan">Kesehatan</option>
+          <option value="produktivitas">Produktivitas</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Has quantity toggle -->
+    <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px">
+      <input type="checkbox" id="remHasQty" onchange="toggleQtyFields()" style="width:16px;height:16px;accent-color:#6366f1">
+      <label for="remHasQty" style="font-size:13px;color:var(--text-secondary);cursor:pointer">Punya target angka (km, gelas, halaman, dll)</label>
+    </div>
+    <div id="qtyFields" style="display:none">
+      <div class="form-row" style="margin-bottom:14px">
+        <div>
+          <div class="field-label">Target</div>
+          <input class="form-input" type="number" id="remQtyTarget" placeholder="Contoh: 5" min="0" step="0.5">
+        </div>
+        <div>
+          <div class="field-label">Satuan</div>
+          <input class="form-input" type="text" id="remQtyUnit" placeholder="km / gelas / halaman">
+        </div>
+      </div>
+    </div>
+
+    <!-- Color -->
+    <div style="margin-bottom:20px">
+      <div class="field-label">Warna</div>
+      <div class="color-row">
+        {% for c in ['#6366f1','#10b981','#f59e0b','#ec4899','#0ea5e9','#8b5cf6','#ef4444','#14b8a6'] %}
+        <div class="color-opt {{ 'selected' if loop.first }}" style="background:{{ c }}" data-color="{{ c }}" onclick="selectColor(this)"></div>
+        {% endfor %}
+      </div>
+      <input type="hidden" id="remColor" value="#6366f1">
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:10px">
+      <button onclick="closeModal('addReminderModal')" class="btn btn-ghost" style="flex:1">Batal</button>
+      <button onclick="saveReminder()" class="btn btn-primary" style="flex:2" id="saveReminderBtn">Simpan Pengingat</button>
+    </div>
+  </div>
+</div>
+
+<!-- Milestone Popup -->
+<div class="milestone-popup" id="milestonePopup">
+  <div class="milestone-emoji" id="milestoneEmoji">🎉</div>
+  <div style="font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:8px" id="milestoneTitle">Milestone!</div>
+  <div style="font-size:13px;color:var(--text-muted);line-height:1.5" id="milestoneMsg"></div>
+  <button onclick="closeMilestone()" style="margin-top:16px;padding:8px 24px;border-radius:10px;border:none;background:linear-gradient(135deg,#6366f1,#06b6d4);color:#fff;font-size:13px;font-weight:600;cursor:pointer">
+    Luar biasa! 🙌
+  </button>
+</div>
+<div id="milestoneOverlay" onclick="closeMilestone()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:8999"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── STATE ──
+let _editingId   = null;
+let _reminders   = {{ reminders | tojson }};
+let _todayLogs   = {{ today_logs | tojson }};
+let _selectedDays = [];
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', () => {
+  renderReminders();
+  updateProgress();
+});
+
+// ── RENDER REMINDER LIST ──
+function renderReminders() {
+  const container = document.getElementById('reminderList');
+  if (!_reminders.length) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:40px 20px;color:var(--text-muted)">
+        <div style="font-size:40px;margin-bottom:12px">⏰</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px">Belum ada pengingat</div>
+        <div style="font-size:12px">Klik "Tambah" atau install template di bawah</div>
+      </div>`;
+    return;
+  }
+
+  // Pisah active vs inactive
+  const active   = _reminders.filter(r => r.is_active);
+  const inactive = _reminders.filter(r => !r.is_active);
+
+  let html = '';
+  if (active.length) {
+    html += '<div class="rem-section">⏰ Aktif</div>';
+    html += active.map(r => renderCard(r)).join('');
+  }
+  if (inactive.length) {
+    html += '<div class="rem-section">⏸ Nonaktif</div>';
+    html += inactive.map(r => renderCard(r)).join('');
+  }
+  container.innerHTML = html;
+}
+
+function renderCard(r) {
+  const log   = _todayLogs[r.id] || {};
+  const done  = !!log.completed_at;
+  const color = r.color || '#6366f1';
+
+  // Streak badge
+  const tier      = r.tier || 'pemula';
+  const tierColor = r.tier_color || '#888780';
+  const tierEmoji = {
+    pemula:'🌱', konsisten:'🔥', momentum:'⚡', disiplin:'💎',
+    century:'🌊', master:'🔮', setahun:'👑', legend:'⚡', immortal:'🌟'
+  }[tier] || '🌱';
+  const streak = r.current_streak || 0;
+
+  // Repeat label
+  const repeatLabel = {
+    daily:'Setiap hari', weekdays:'Hari kerja',
+    weekend:'Weekend', weekly:'Mingguan', custom:'Custom'
+  }[r.repeat_type] || 'Setiap hari';
+
+  return `
+    <div class="rem-card animate-fade-up ${done ? 'done' : ''} ${!r.is_active ? 'rem-inactive' : ''}"
+         id="remCard-${r.id}" style="--rem-color:${color}">
+      <div class="rem-check ${done ? 'checked' : ''}" onclick="toggleDone(${r.id})" style="border-color:${color}">
+        ${done ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+      </div>
+      <div class="rem-emoji">${r.emoji || '🔔'}</div>
+      <div class="rem-body">
+        <div class="rem-title">${r.title}</div>
+        <div class="rem-time">
+          <span>${r.remind_time ? r.remind_time.slice(0,5) : ''}</span>
+          <span style="color:var(--border-bright)">·</span>
+          <span>${repeatLabel}</span>
+          ${streak > 0 ? `
+          <span class="streak-badge" style="background:${tierColor}22;color:${tierColor};border:1px solid ${tierColor}44">
+            ${tierEmoji} ${streak} hari
+          </span>` : ''}
+        </div>
+      </div>
+      <div class="rem-actions">
+        <button class="rem-action-btn" onclick="openEdit(${r.id})" title="Edit">✏️</button>
+        <button class="rem-action-btn" onclick="toggleActive(${r.id})" title="${r.is_active ? 'Nonaktifkan' : 'Aktifkan'}">
+          ${r.is_active ? '⏸' : '▶️'}
+        </button>
+        <button class="rem-action-btn" onclick="deleteReminder(${r.id})" title="Hapus" style="color:var(--rose)">🗑</button>
+      </div>
+    </div>`;
+}
+
+// ── PROGRESS RING ──
+function updateProgress() {
+  const today     = new Date().toISOString().split('T')[0];
+  const dayOfWeek = new Date().getDay(); // 0=Sun..6=Sat
+  const dowMap    = {0:6,1:0,2:1,3:2,4:3,5:4,6:5}; // JS→Python weekday
+
+  let active = _reminders.filter(r => {
+    if (!r.is_active) return false;
+    const rt = r.repeat_type;
+    const d  = dowMap[dayOfWeek];
+    if (rt === 'weekdays' && d >= 5) return false;
+    if (rt === 'weekend'  && d < 5)  return false;
+    return true;
+  });
+  const total  = active.length;
+  const done   = active.filter(r => _todayLogs[r.id] && _todayLogs[r.id].completed_at).length;
+  const pct    = total ? Math.round(done / total * 100) : 0;
+  const circum = 131.9;
+  const offset = circum - (circum * pct / 100);
+
+  const circle = document.getElementById('progressCircle');
+  const pctEl  = document.getElementById('progressPct');
+  const titleEl = document.getElementById('progressTitle');
+  const subEl  = document.getElementById('progressSub');
+
+  if (circle) circle.style.strokeDashoffset = offset;
+  if (pctEl)  pctEl.textContent = pct + '%';
+  if (titleEl) titleEl.textContent = done === total && total > 0
+    ? '🎉 Semua pengingat selesai hari ini!'
+    : `${done} dari ${total} pengingat selesai`;
+  if (subEl) {
+    const d = new Date();
+    subEl.textContent = d.toLocaleDateString('id-ID', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  }
+}
+
+// ── TOGGLE DONE ──
+async function toggleDone(id) {
+  const log  = _todayLogs[id] || {};
+  const done = !!log.completed_at;
+  try {
+    const url = done ? `/api/reminders/${id}/uncheck` : `/api/reminders/${id}/complete`;
+    const res = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    const data = await res.json();
+    if (!data.ok && !done) return showToast('Gagal menyimpan', 'error');
+
+    // Update local state
+    if (done) {
+      delete _todayLogs[id];
+    } else {
+      _todayLogs[id] = { completed_at: new Date().toISOString() };
+      // Update streak in _reminders
+      const rem = _reminders.find(r => r.id === id);
+      if (rem && data.streak !== undefined) {
+        rem.current_streak = data.streak;
+        rem.longest_streak = data.longest;
+        rem.tier           = data.tier;
+        rem.tier_color     = data.tier_color;
+      }
+      // Show milestone popup
+      if (data.milestone && data.milestone_msg) {
+        showMilestone(data.streak, data.tier, data.tier_color, data.milestone_msg);
+      }
+    }
+    renderReminders();
+    updateProgress();
+    showToast(done ? 'Dibatalkan' : '✅ Selesai!', done ? 'info' : 'success');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+// ── TOGGLE ACTIVE ──
+async function toggleActive(id) {
+  try {
+    const res  = await fetch(`/api/reminders/${id}/toggle-active`, { method: 'POST' });
+    const data = await res.json();
+    const rem  = _reminders.find(r => r.id === id);
+    if (rem) rem.is_active = data.is_active;
+    renderReminders();
+    showToast(data.is_active ? 'Pengingat diaktifkan' : 'Pengingat dinonaktifkan', 'info');
+  } catch(e) {}
+}
+
+// ── DELETE ──
+async function deleteReminder(id) {
+  if (!confirm('Hapus pengingat ini? Semua data streak akan hilang.')) return;
+  try {
+    await fetch(`/api/reminders/${id}`, { method: 'DELETE' });
+    _reminders = _reminders.filter(r => r.id !== id);
+    delete _todayLogs[id];
+    renderReminders();
+    updateProgress();
+    showToast('Pengingat dihapus', 'info');
+  } catch(e) {}
+}
+
+// ── OPEN EDIT ──
+function openEdit(id) {
+  const r = _reminders.find(x => x.id === id);
+  if (!r) return;
+  _editingId = id;
+
+  document.getElementById('modalTitle').textContent = '✏️ Edit Pengingat';
+  document.getElementById('remTitle').value    = r.title;
+  document.getElementById('remTime').value     = (r.remind_time || '08:00').slice(0,5);
+  document.getElementById('remRepeat').value   = r.repeat_type || 'daily';
+  document.getElementById('remSnooze').value   = String(r.snooze_minutes || 30);
+  document.getElementById('remCategory').value = r.category || 'general';
+  document.getElementById('remEmoji').value    = r.emoji || '🔔';
+  document.getElementById('remColor').value    = r.color || '#6366f1';
+  document.getElementById('remHasQty').checked = !!r.has_quantity;
+  document.getElementById('remQtyTarget').value = r.quantity_target || '';
+  document.getElementById('remQtyUnit').value   = r.quantity_unit  || '';
+
+  // Emoji visual
+  document.querySelectorAll('.emoji-opt').forEach(el => {
+    el.classList.toggle('selected', el.textContent.trim() === r.emoji);
+  });
+  // Color visual
+  document.querySelectorAll('.color-opt').forEach(el => {
+    el.classList.toggle('selected', el.dataset.color === r.color);
+  });
+  // Days
+  _selectedDays = [];
+  try {
+    if (r.repeat_days) {
+      _selectedDays = typeof r.repeat_days === 'string'
+        ? JSON.parse(r.repeat_days) : r.repeat_days;
+    }
+  } catch(e) {}
+  document.querySelectorAll('.day-btn').forEach(btn => {
+    btn.classList.toggle('selected', _selectedDays.includes(parseInt(btn.dataset.day)));
+  });
+
+  toggleRepeatDays();
+  toggleQtyFields();
+  openModal('addReminderModal');
+}
+
+// ── SAVE (create or update) ──
+async function saveReminder() {
+  const title = document.getElementById('remTitle').value.trim();
+  const time  = document.getElementById('remTime').value;
+  if (!title) return showToast('Nama pengingat wajib diisi', 'error');
+  if (!time)  return showToast('Jam pengingat wajib diisi', 'error');
+
+  const btn = document.getElementById('saveReminderBtn');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+  const payload = {
+    title,
+    emoji         : document.getElementById('remEmoji').value,
+    remind_time   : time,
+    repeat_type   : document.getElementById('remRepeat').value,
+    repeat_days   : _selectedDays,
+    snooze_minutes: parseInt(document.getElementById('remSnooze').value),
+    category      : document.getElementById('remCategory').value,
+    color         : document.getElementById('remColor').value,
+    has_quantity  : document.getElementById('remHasQty').checked,
+    quantity_target: parseFloat(document.getElementById('remQtyTarget').value) || null,
+    quantity_unit : document.getElementById('remQtyUnit').value.trim(),
+    is_active     : true,
+  };
+
+  try {
+    const url    = _editingId ? `/api/reminders/${_editingId}` : '/api/reminders';
+    const method = _editingId ? 'PUT' : 'POST';
+    const res    = await fetch(url, {
+      method, headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) return showToast(data.error || 'Gagal menyimpan', 'error');
+
+    // Refresh list
+    const r2 = await fetch('/api/reminders');
+    const d2 = await r2.json();
+    _reminders = d2.reminders || [];
+    _todayLogs = d2.today_logs || {};
+
+    renderReminders();
+    updateProgress();
+    closeModal('addReminderModal');
+    resetForm();
+    showToast(_editingId ? '✅ Pengingat diperbarui' : '✅ Pengingat ditambahkan', 'success');
+    _editingId = null;
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simpan Pengingat';
+  }
+}
+
+// ── INSTALL TEMPLATE ──
+async function installTemplate(id, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Menginstal...';
+  try {
+    const res  = await fetch(`/api/reminders/templates/${id}/install`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) return showToast(data.error || 'Gagal install', 'error');
+
+    const r2 = await fetch('/api/reminders');
+    const d2 = await r2.json();
+    _reminders = d2.reminders || [];
+    _todayLogs = d2.today_logs || {};
+    renderReminders();
+    updateProgress();
+    showToast(`✅ ${data.created} pengingat berhasil diinstall!`, 'success');
+    btn.textContent = '✅ Terinstall';
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Install Paket';
+  }
+}
+
+// ── FORM HELPERS ──
+function resetForm() {
+  _editingId = null;
+  _selectedDays = [];
+  document.getElementById('modalTitle').textContent = '➕ Tambah Pengingat';
+  document.getElementById('remTitle').value = '';
+  document.getElementById('remTime').value  = '08:00';
+  document.getElementById('remRepeat').value = 'daily';
+  document.getElementById('remSnooze').value = '30';
+  document.getElementById('remCategory').value = 'general';
+  document.getElementById('remHasQty').checked = false;
+  document.getElementById('remQtyTarget').value = '';
+  document.getElementById('remQtyUnit').value   = '';
+  selectEmojiVal('🔔');
+  selectColorVal('#6366f1');
+  toggleRepeatDays();
+  toggleQtyFields();
+  document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
+}
+
+function selectEmoji(el, val) {
+  document.querySelectorAll('.emoji-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('remEmoji').value = val;
+}
+function selectEmojiVal(val) {
+  document.querySelectorAll('.emoji-opt').forEach(el => {
+    el.classList.toggle('selected', el.textContent.trim() === val);
+  });
+  document.getElementById('remEmoji').value = val;
+}
+function selectColor(el) {
+  document.querySelectorAll('.color-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('remColor').value = el.dataset.color;
+}
+function selectColorVal(val) {
+  document.querySelectorAll('.color-opt').forEach(el => {
+    el.classList.toggle('selected', el.dataset.color === val);
+  });
+  document.getElementById('remColor').value = val;
+}
+function toggleRepeatDays() {
+  const val = document.getElementById('remRepeat').value;
+  document.getElementById('daySelector').style.display = val === 'weekly' ? 'block' : 'none';
+}
+function toggleQtyFields() {
+  const show = document.getElementById('remHasQty').checked;
+  document.getElementById('qtyFields').style.display = show ? 'block' : 'none';
+}
+function toggleDay(btn) {
+  const day = parseInt(btn.dataset.day);
+  if (_selectedDays.includes(day)) {
+    _selectedDays = _selectedDays.filter(d => d !== day);
+    btn.classList.remove('selected');
+  } else {
+    _selectedDays.push(day);
+    btn.classList.add('selected');
+  }
+}
+
+// ── MILESTONE POPUP ──
+function showMilestone(streak, tier, color, msg) {
+  const tierEmoji = {
+    pemula:'🌱', konsisten:'🔥', momentum:'⚡', disiplin:'💎',
+    century:'🌊', master:'🔮', setahun:'👑', legend:'⚡', immortal:'🌟'
+  }[tier] || '🎉';
+  document.getElementById('milestoneEmoji').textContent = tierEmoji;
+  document.getElementById('milestoneTitle').textContent = `${streak} Hari Streak!`;
+  document.getElementById('milestoneMsg').textContent   = msg;
+  document.getElementById('milestonePopup').classList.add('show');
+  document.getElementById('milestoneOverlay').style.display = 'block';
+  if (typeof confetti === 'function') {
+    confetti({ particleCount:120, spread:80, origin:{y:0.6} });
+  }
+}
+function closeMilestone() {
+  document.getElementById('milestonePopup').classList.remove('show');
+  document.getElementById('milestoneOverlay').style.display = 'none';
+}
+
+// Reset form when modal closes
+document.getElementById('addReminderModal').addEventListener('click', function(e) {
+  if (e.target === this) { closeModal('addReminderModal'); resetForm(); }
+});
+</script>
+{% endblock %}

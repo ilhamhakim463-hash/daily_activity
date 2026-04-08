@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" id="apexLogo">
+  <!-- Background rounded rect -->
+  <rect width="100" height="100" rx="22" ry="22" fill="#0a0a0f"/>
+  <!-- Arrow shaft going up-right -->
+  <g stroke="#6366f1" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Main upward arrow -->
+    <line x1="22" y1="72" x2="72" y2="22" stroke-width="7" id="arrowShaft"/>
+    <!-- Arrow head -->
+    <polyline points="48,22 72,22 72,46" stroke-width="7" id="arrowHead"/>
+    <!-- V curve at base -->
+    <path d="M18,58 Q30,80 42,68 Q54,56 66,72" stroke-width="6" id="vCurve" stroke="#8b8cf5"/>
+    <!-- Center dot / spark -->
+    <circle cx="50" cy="50" r="4" fill="#6366f1" stroke="none" id="centerDot"/>
+  </g>
+</svg>

@@ -1,0 +1,1037 @@
+{% extends "base.html" %}
+{% block title %}ESQ — ActivityOS{% endblock %}
+{% block page_title %}ESQ Journal{% endblock %}
+{% block page_meta %}Kenali dirimu. Tumbuh setiap hari.{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn" onclick="openShareCard()" style="padding:8px 14px;font-size:12px;background:linear-gradient(135deg,#d4af37,#f5e27e);color:#000;font-weight:700;border-radius:var(--radius-sm)">
+  <i data-lucide="share-2" style="width:13px;height:13px"></i> Share Card
+</button>
+{% endblock %}
+
+{% block head %}
+<style>
+/* ── GOLD THEME ACCENTS ── */
+:root {
+  --gold:       #d4af37;
+  --gold-light: #f5e27e;
+  --gold-glow:  rgba(212,175,55,0.2);
+  --gold-dim:   rgba(212,175,55,0.08);
+}
+
+/* ── ISQ HERO ── */
+.isq-hero {
+  background: linear-gradient(135deg, #0d0d0a 0%, #1a1500 50%, #0d0d0a 100%);
+  border: 1px solid rgba(212,175,55,0.2);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.isq-hero::before {
+  content:'';
+  position:absolute; top:-60px; right:-60px;
+  width:200px; height:200px; border-radius:50%;
+  background: radial-gradient(circle, rgba(212,175,55,0.12) 0%, transparent 70%);
+  pointer-events:none;
+}
+.isq-hero-title {
+  font-size:22px; font-weight:800; letter-spacing:-0.5px;
+  background:linear-gradient(135deg,var(--gold),var(--gold-light));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.isq-score-ring {
+  width:80px; height:80px; border-radius:50%;
+  border: 3px solid var(--gold);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  box-shadow: 0 0 20px var(--gold-glow), inset 0 0 20px var(--gold-dim);
+  flex-shrink:0;
+}
+.isq-score-num { font-family:'Space Mono',monospace; font-size:22px; font-weight:700; color:var(--gold); line-height:1; }
+.isq-score-lbl { font-size:9px; color:var(--gold); letter-spacing:1px; text-transform:uppercase; }
+.isq-mode-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 14px; border-radius:100px; font-size:12px; font-weight:700;
+  border: 1px solid;
+}
+.mode-flowing    { background:rgba(16,185,129,0.12); color:#10b981; border-color:rgba(16,185,129,0.3); }
+.mode-steady     { background:rgba(212,175,55,0.12); color:var(--gold); border-color:rgba(212,175,55,0.3); }
+.mode-struggling { background:rgba(244,63,94,0.12);  color:#f43f5e; border-color:rgba(244,63,94,0.3); }
+.mode-resting    { background:rgba(6,182,212,0.12);  color:#06b6d4; border-color:rgba(6,182,212,0.3); }
+
+/* ── RITUAL CARDS ── */
+.ritual-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.ritual-card {
+  background: var(--bg-surface); border-radius: var(--radius-xl);
+  overflow:hidden; border: 1px solid var(--border);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.ritual-card:hover { border-color:rgba(212,175,55,0.3); box-shadow:0 0 24px var(--gold-dim); }
+.ritual-card-header {
+  padding: 20px 20px 16px;
+  display: flex; align-items:center; gap:12px;
+  border-bottom: 1px solid var(--border);
+}
+.ritual-icon { font-size:28px; }
+.ritual-label { font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); }
+.ritual-title { font-size:16px; font-weight:700; }
+.ritual-card-body { padding:18px 20px; }
+.ritual-status {
+  display:flex; align-items:center; gap:8px;
+  font-size:12px; padding: 8px 14px; border-radius:100px;
+}
+.ritual-status.done   { background:rgba(16,185,129,0.12); color:#10b981; }
+.ritual-status.pending{ background:rgba(212,175,55,0.1); color:var(--gold); }
+.ritual-detail { font-size:13px; color:var(--text-secondary); margin-top:12px; line-height:1.6; }
+.ritual-cta { margin-top:14px; width:100%; justify-content:center; }
+
+/* ── ENERGY SELECTOR ── */
+.energy-row { display:flex; gap:8px; }
+.energy-btn {
+  flex:1; padding:10px 6px; border-radius:var(--radius-sm);
+  border:2px solid var(--border); background:var(--bg-elevated);
+  cursor:pointer; text-align:center; transition:all 0.15s; font-size:20px;
+}
+.energy-btn:hover { border-color:var(--gold); transform:translateY(-2px); }
+.energy-btn.active { border-color:var(--gold); background:var(--gold-dim); box-shadow:0 0 12px var(--gold-glow); }
+.energy-label { font-size:10px; color:var(--text-muted); margin-top:4px; display:block; }
+
+/* ── WORD OF DAY ── */
+.word-chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.word-chip {
+  padding:6px 14px; border-radius:100px; font-size:12px; font-weight:600;
+  background:var(--bg-overlay); border:1px solid var(--border); cursor:pointer;
+  transition:all 0.15s;
+}
+.word-chip:hover,.word-chip.active { background:var(--gold-dim); border-color:var(--gold); color:var(--gold); }
+
+/* ── MOOD MINI ── */
+.mood-mini { display:flex; gap:8px; flex-wrap:wrap; }
+.mood-mini-btn {
+  width:40px; height:40px; border-radius:10px; font-size:22px; cursor:pointer;
+  border:2px solid transparent; background:var(--bg-elevated); transition:all 0.15s;
+  display:flex; align-items:center; justify-content:center;
+}
+.mood-mini-btn:hover { transform:scale(1.15); }
+.mood-mini-btn.active { border-color:var(--gold); background:var(--gold-dim); }
+
+/* ── HISTORY ── */
+.history-grid { display:grid; gap:12px; }
+.history-item {
+  background:var(--bg-surface); border:1px solid var(--border);
+  border-radius:var(--radius-lg); padding:16px 18px;
+  display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:start;
+  transition:border-color 0.2s;
+}
+.history-item:hover { border-color:rgba(212,175,55,0.25); }
+.history-date-block { text-align:center; }
+.history-day  { font-family:'Space Mono',monospace; font-size:22px; font-weight:700; color:var(--gold); line-height:1; }
+.history-mon  { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; }
+.history-word { font-size:13px; font-weight:700; color:var(--text-primary); margin-bottom:4px; }
+.history-journal { font-size:12px; color:var(--text-secondary); font-style:italic; margin-top:4px; line-height:1.5; }
+.history-score-pill {
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  font-family:'Space Mono',monospace; font-size:13px; font-weight:700;
+  color:var(--gold);
+}
+
+/* ── SHARE CARD OVERLAY ── */
+.share-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(16px);
+  z-index:700; display:flex; align-items:center; justify-content:center; padding:20px;
+  opacity:0; pointer-events:none; transition:opacity 0.3s;
+}
+.share-overlay.open { opacity:1; pointer-events:all; }
+
+/* ── THE ACTUAL SHARE CARD ── */
+.share-card {
+  width:320px; min-height:400px;
+  background: #0a0a08;
+  border: 1px solid rgba(212,175,55,0.4);
+  border-radius:24px;
+  padding:28px 24px;
+  position:relative; overflow:hidden;
+  box-shadow: 0 0 60px rgba(212,175,55,0.15), 0 0 120px rgba(0,0,0,0.8);
+  font-family:'Outfit',sans-serif;
+  color:#f0f0e8;
+}
+.share-card::before {
+  content:'';
+  position:absolute; top:-80px; right:-80px;
+  width:200px; height:200px; border-radius:50%;
+  background:radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%);
+  pointer-events:none;
+}
+.share-card::after {
+  content:'';
+  position:absolute; bottom:-60px; left:-60px;
+  width:160px; height:160px; border-radius:50%;
+  background:radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%);
+  pointer-events:none;
+}
+.sc-logo { display:flex; align-items:center; gap:8px; margin-bottom:24px; }
+.sc-logo-icon { width:28px; height:28px; background:linear-gradient(135deg,#6366f1,#06b6d4); border-radius:8px; display:flex; align-items:center; justify-content:center; }
+.sc-logo-text { font-size:13px; font-weight:800; letter-spacing:-0.3px; }
+.sc-logo-sub  { font-family:'Space Mono',monospace; font-size:8px; color:var(--gold); letter-spacing:2px; text-transform:uppercase; margin-top:1px; }
+.sc-word { font-size:36px; font-weight:900; letter-spacing:-1px; line-height:1; margin-bottom:6px; background:linear-gradient(135deg,var(--gold),var(--gold-light)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.sc-tagline { font-size:12px; color:rgba(240,240,232,0.4); margin-bottom:24px; font-style:italic; }
+.sc-divider { height:1px; background:linear-gradient(90deg,transparent,rgba(212,175,55,0.3),transparent); margin-bottom:20px; }
+.sc-stat-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.sc-stat-icon { font-size:16px; width:20px; text-align:center; }
+.sc-stat-val  { font-family:'Space Mono',monospace; font-size:14px; font-weight:700; color:var(--gold); min-width:28px; }
+.sc-stat-lbl  { font-size:12px; color:rgba(240,240,232,0.55); }
+.sc-energy { display:flex; gap:3px; }
+.sc-energy-dot { width:10px; height:10px; border-radius:50%; }
+.sc-energy-dot.on  { background:var(--gold); box-shadow:0 0 6px var(--gold); }
+.sc-energy-dot.off { background:rgba(212,175,55,0.15); }
+.sc-journal {
+  margin-top:20px; padding:14px; border-radius:12px;
+  background:rgba(212,175,55,0.05); border:1px solid rgba(212,175,55,0.15);
+  font-size:12px; color:rgba(240,240,232,0.7); font-style:italic; line-height:1.6;
+}
+.sc-journal::before { content:'" '; color:var(--gold); font-size:18px; font-style:normal; }
+.sc-journal::after  { content:' "'; color:var(--gold); font-size:18px; font-style:normal; }
+.sc-footer { margin-top:20px; display:flex; justify-content:space-between; align-items:flex-end; }
+.sc-date { font-family:'Space Mono',monospace; font-size:10px; color:rgba(240,240,232,0.3); }
+.sc-mode { font-size:10px; font-weight:700; padding:3px 8px; border-radius:100px; }
+.sc-watermark { font-family:'Space Mono',monospace; font-size:9px; color:rgba(212,175,55,0.35); letter-spacing:1px; text-transform:uppercase; }
+
+/* Share card actions */
+.share-actions { display:flex; flex-direction:column; gap:10px; margin-top:20px; width:320px; }
+
+/* ── AI VOICE BUTTON ── */
+.voice-fab {
+  position:fixed; bottom:88px; right:20px; z-index:200;
+  width:52px; height:52px; border-radius:50%;
+  background:linear-gradient(135deg,var(--gold),#b8962e);
+  border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow: 0 4px 20px rgba(212,175,55,0.4);
+  transition:all 0.3s var(--ease);
+  animation: voicePulse 3s ease-in-out infinite;
+}
+.voice-fab:hover { transform:scale(1.1); box-shadow:0 6px 30px rgba(212,175,55,0.6); }
+.voice-fab.speaking { animation:voiceSpeaking 0.5s ease-in-out infinite; background:linear-gradient(135deg,#10b981,#059669); }
+@keyframes voicePulse { 0%,100%{box-shadow:0 4px 20px rgba(212,175,55,0.4)} 50%{box-shadow:0 4px 30px rgba(212,175,55,0.7)} }
+@keyframes voiceSpeaking { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+
+/* ── TIME CAPSULE ── */
+.capsule-card {
+  background:linear-gradient(135deg,rgba(212,175,55,0.08),rgba(99,102,241,0.05));
+  border:1px solid rgba(212,175,55,0.25); border-radius:var(--radius-lg);
+  padding:18px; position:relative; overflow:hidden;
+}
+.capsule-card::before { content:'📮'; position:absolute; right:16px; top:50%; transform:translateY(-50%); font-size:36px; opacity:0.15; }
+
+/* ── TABS ── */
+.isq-tabs { display:flex; gap:4px; background:var(--bg-elevated); border-radius:12px; padding:4px; margin-bottom:20px; }
+.isq-tab {
+  flex:1; padding:9px; border:none; border-radius:8px; cursor:pointer;
+  font-family:'Outfit',sans-serif; font-size:13px; font-weight:600;
+  background:transparent; color:var(--text-secondary); transition:all 0.2s;
+}
+.isq-tab.active { background:var(--bg-surface); color:var(--text-primary); box-shadow:0 1px 6px rgba(0,0,0,0.3); }
+.isq-tab-pane { display:none; }
+.isq-tab-pane.active { display:block; }
+
+@media(max-width:768px) {
+  .ritual-grid { grid-template-columns:1fr; }
+  .share-card  { width:290px; }
+  .share-actions { width:290px; }
+  .isq-hero { padding:20px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set morning = today.get('morning') %}
+{% set evening = today.get('evening') %}
+
+<!-- ── ISQ HERO ── -->
+<div class="isq-hero animate-fade-up">
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <div class="isq-score-ring">
+      <div class="isq-score-num">{{ evening.isq_score if evening else '?' }}</div>
+      <div class="isq-score-lbl">ISQ</div>
+    </div>
+    <div style="flex:1">
+      <div class="isq-hero-title">ESQ — Pertumbuhan Harianmu</div>
+      <div style="font-size:13px;color:rgba(240,240,232,0.5);margin:4px 0 10px">{{ today_str }}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        {% if evening %}
+          <span class="isq-mode-badge mode-{{ evening.isq_mode }}">
+            {{ '🌊' if evening.isq_mode=='flowing' else '⚡' if evening.isq_mode=='steady' else '🌧' if evening.isq_mode=='struggling' else '🌙' }}
+            {{ evening.isq_mode|title }}
+          </span>
+        {% else %}
+          <span class="isq-mode-badge mode-steady">⏳ Belum refleksi malam</span>
+        {% endif %}
+        {% if morning %}
+          <span style="font-size:13px;color:rgba(240,240,232,0.5)">
+            🌅 Ritual pagi ✓ &nbsp;|&nbsp;
+            {{ morning.word_of_day if morning.word_of_day else 'No word set' }}
+          </span>
+        {% endif %}
+      </div>
+    </div>
+    <div>
+      <button class="btn" onclick="speakVoice('morning')" id="voiceMorning"
+              style="background:var(--gold-dim);border:1px solid rgba(212,175,55,0.3);color:var(--gold);padding:8px 14px;font-size:12px;font-weight:700">
+        <i data-lucide="volume-2" style="width:13px;height:13px"></i> Sapaan AI
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── CAPSULE NOTIFICATION ── -->
+{% if capsules %}
+{% for cap in capsules %}
+<div class="capsule-card animate-fade-up" style="margin-bottom:16px">
+  <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">
+    📬 Time Capsule telah tiba!
+  </div>
+  <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;font-style:italic;line-height:1.6">
+    "{{ cap.message }}"
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div style="font-size:11px;color:var(--text-muted)">Ditulis {{ cap.created_at[:10] }}</div>
+    <button class="btn btn-ghost" style="padding:6px 12px;font-size:11px"
+            onclick="openCapsule({{ cap.id }})">Tandai Dibaca</button>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- ── TABS ── -->
+<div class="isq-tabs">
+  <button class="isq-tab active" onclick="switchTab('today')">📅 Hari Ini</button>
+  <button class="isq-tab" onclick="switchTab('history')">📖 Riwayat</button>
+  <button class="isq-tab" onclick="switchTab('capsule')">📮 Time Capsule</button>
+</div>
+
+<!-- ════ TAB: TODAY ════ -->
+<div class="isq-tab-pane active" id="tab-today">
+  <div class="ritual-grid">
+    <!-- MORNING CARD -->
+    <div class="ritual-card">
+      <div class="ritual-card-header">
+        <div class="ritual-icon">🌅</div>
+        <div>
+          <div class="ritual-label">Ritual Pagi</div>
+          <div class="ritual-title">Intention & Gratitude</div>
+        </div>
+      </div>
+      <div class="ritual-card-body">
+        {% if morning %}
+          <div class="ritual-status done">
+            <i data-lucide="check-circle" style="width:14px;height:14px"></i> Selesai hari ini
+          </div>
+          <div class="ritual-detail">
+            <div style="margin-bottom:8px">
+              <strong style="color:var(--gold)">Kata hari ini:</strong> {{ morning.word_of_day or '—' }}
+            </div>
+            <div style="margin-bottom:8px">
+              <strong>Energi pagi:</strong>
+              {% for i in range(1,6) %}<span style="font-size:16px">{{ '⚡' if i <= morning.energy_level else '○' }}</span>{% endfor %}
+            </div>
+            {% if morning.intention_1 %}
+            <div><strong>Rencana:</strong>
+              <ol style="margin:4px 0 0 16px;font-size:12px;color:var(--text-secondary)">
+                <li>{{ morning.intention_1 }}</li>
+                {% if morning.intention_2 %}<li>{{ morning.intention_2 }}</li>{% endif %}
+                {% if morning.intention_3 %}<li>{{ morning.intention_3 }}</li>{% endif %}
+              </ol>
+            </div>
+            {% endif %}
+          </div>
+          <button class="btn btn-ghost ritual-cta" onclick="openModal('morningModal')" style="font-size:12px">
+            <i data-lucide="pencil" style="width:12px;height:12px"></i> Edit Ritual
+          </button>
+        {% else %}
+          <div class="ritual-status pending">
+            <i data-lucide="clock" style="width:14px;height:14px"></i> Belum diisi hari ini
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:12px;line-height:1.6">
+            Mulai hari dengan niat yang jelas. Set energi, rencana, dan gratitude paginya.
+          </div>
+          <button class="btn ritual-cta" onclick="openModal('morningModal')"
+                  style="background:linear-gradient(135deg,var(--gold),#b8962e);color:#000;font-weight:700;font-size:13px">
+            <i data-lucide="sun" style="width:14px;height:14px"></i> Mulai Ritual Pagi
+          </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- EVENING CARD -->
+    <div class="ritual-card">
+      <div class="ritual-card-header">
+        <div class="ritual-icon">🌙</div>
+        <div>
+          <div class="ritual-label">Ritual Malam</div>
+          <div class="ritual-title">Refleksi & Closing</div>
+        </div>
+      </div>
+      <div class="ritual-card-body">
+        {% if evening %}
+          <div class="ritual-status done">
+            <i data-lucide="check-circle" style="width:14px;height:14px"></i> Selesai hari ini
+          </div>
+          <div class="ritual-detail">
+            <div style="margin-bottom:8px">
+              <strong>ESQ Score:</strong>
+              <span style="font-family:'Space Mono',monospace;color:var(--gold);font-size:18px;font-weight:700"> {{ evening.isq_score }}</span>/100
+            </div>
+            {% if evening.micro_journal %}
+            <div style="font-size:12px;font-style:italic;color:var(--text-secondary);border-left:2px solid var(--gold);padding-left:10px;margin-top:8px">
+              "{{ evening.micro_journal[:120] }}{% if evening.micro_journal|length > 120 %}...{% endif %}"
+            </div>
+            {% endif %}
+          </div>
+          <button class="btn btn-ghost ritual-cta" onclick="openModal('eveningModal')" style="font-size:12px">
+            <i data-lucide="pencil" style="width:12px;height:12px"></i> Edit Refleksi
+          </button>
+        {% else %}
+          <div class="ritual-status pending">
+            <i data-lucide="clock" style="width:14px;height:14px"></i> Belum diisi hari ini
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:12px;line-height:1.6">
+            Tutup hari dengan refleksi. Bagaimana harimu? Apa yang kamu pelajari?
+          </div>
+          <button class="btn ritual-cta" onclick="openModal('eveningModal')"
+                  style="background:linear-gradient(135deg,#2d2460,#6366f1);color:#fff;font-weight:700;font-size:13px">
+            <i data-lucide="moon" style="width:14px;height:14px"></i> Mulai Refleksi Malam
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- MIRROR MOMENT (if both morning + evening filled) -->
+  {% if morning and evening %}
+  <div class="card" style="border-color:rgba(212,175,55,0.2);margin-bottom:20px">
+    <div class="card-header">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:20px">🪞</span>
+        <div class="card-title" style="color:var(--gold)">Mirror Moment</div>
+      </div>
+      <span class="isq-mode-badge mode-{{ evening.isq_mode }}" style="font-size:10px">
+        {{ evening.isq_mode|title }}
+      </span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:10px">🌅 Niat Pagi</div>
+        <div style="font-size:13px;color:var(--text-secondary);display:flex;flex-direction:column;gap:6px">
+          {% if morning.intention_1 %}<div style="display:flex;gap:6px"><span>1.</span>{{ morning.intention_1 }}</div>{% endif %}
+          {% if morning.intention_2 %}<div style="display:flex;gap:6px"><span>2.</span>{{ morning.intention_2 }}</div>{% endif %}
+          {% if morning.intention_3 %}<div style="display:flex;gap:6px"><span>3.</span>{{ morning.intention_3 }}</div>{% endif %}
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:10px">🌙 Realita Malam</div>
+        <div style="font-size:13px;color:var(--text-secondary)">
+          <div style="margin-bottom:8px">
+            {% set done_count = evening.intention_done %}
+            {% for i in range(1,4) %}
+              <span style="font-size:16px">{{ '✅' if i <= done_count else '⬜' }}</span>
+            {% endfor %}
+            <span style="font-size:12px;color:var(--text-muted);margin-left:6px">{{ evening.intention_done }}/3 terwujud</span>
+          </div>
+          {% if evening.micro_journal %}
+          <div style="font-size:12px;font-style:italic;color:var(--text-secondary);line-height:1.6">
+            "{{ evening.micro_journal[:100] }}{% if evening.micro_journal|length > 100 %}...{% endif %}"
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ════ TAB: HISTORY ════ -->
+<div class="isq-tab-pane" id="tab-history">
+  {% if history %}
+  <div class="history-grid">
+    {% for h in history %}
+    <div class="history-item">
+      <div class="history-date-block">
+        <div class="history-day">{{ h.entry_date[8:10] }}</div>
+        <div class="history-mon">{{ h.entry_date[5:7] }}/{{ h.entry_date[2:4] }}</div>
+      </div>
+      <div>
+        <div class="history-word">
+          {% if h.word_of_day %}<span style="color:var(--gold)">"{{ h.word_of_day }}"</span> · {% endif %}
+          <span class="isq-mode-badge mode-{{ h.isq_mode or 'steady' }}" style="font-size:10px;padding:3px 8px">{{ h.isq_mode|title if h.isq_mode else 'No refleksi' }}</span>
+        </div>
+        {% if h.micro_journal %}
+        <div class="history-journal">"{{ h.micro_journal[:80] }}{% if h.micro_journal|length > 80 %}...{% endif %}"</div>
+        {% endif %}
+        <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--text-muted)">
+          {% if h.m_energy %}<span>⚡ Energi pagi: {{ h.m_energy }}/5</span>{% endif %}
+          {% if h.e_energy %}<span>🌙 Malam: {{ h.e_energy }}/5</span>{% endif %}
+          {% if h.intention_done is not none %}<span>✅ {{ h.intention_done }}/3 niat</span>{% endif %}
+        </div>
+      </div>
+      <div class="history-score-pill">
+        <div>{{ h.isq_score or '—' }}</div>
+        <div style="font-size:9px;color:var(--text-muted)">ISQ</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <span style="font-size:48px">📖</span>
+    <p>Belum ada riwayat ISQ.<br>Mulai ritual hari ini!</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ════ TAB: TIME CAPSULE ════ -->
+<div class="isq-tab-pane" id="tab-capsule">
+  <div class="card" style="border-color:rgba(212,175,55,0.2);margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <span style="font-size:24px">📮</span>
+      <div>
+        <div style="font-weight:700;font-size:15px">Tulis untuk Dirimu di Masa Depan</div>
+        <div style="font-size:12px;color:var(--text-muted)">Pesan ini akan muncul di tanggal yang kamu pilih</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="form-group">
+        <label class="form-label">Pesan untuk dirimu</label>
+        <textarea class="form-textarea" id="capsuleMsg" rows="4"
+          placeholder="Hei diriku di masa depan... Sekarang aku sedang berjuang dengan X, dan aku berharap kamu sudah..."></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group">
+          <label class="form-label">Buka pada</label>
+          <input type="date" class="form-input" id="capsuleDate" min="{{ today_iso }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Preset waktu</label>
+          <select class="form-select" id="capsulePreset" onchange="setCapsulePreset(this.value)">
+            <option value="">-- Pilih --</option>
+            <option value="7">1 Minggu</option>
+            <option value="30">1 Bulan</option>
+            <option value="60">2 Bulan</option>
+            <option value="90">3 Bulan</option>
+            <option value="180">6 Bulan</option>
+            <option value="365">1 Tahun</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" onclick="saveCapsule()"
+              style="background:linear-gradient(135deg,var(--gold),#b8962e);color:#000;font-weight:700;width:100%;justify-content:center">
+        <i data-lucide="send" style="width:14px;height:14px"></i> Kirim ke Masa Depan
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MORNING RITUAL MODAL
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="morningModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <span style="font-size:28px">🌅</span>
+      <div>
+        <div class="modal-title" style="margin-bottom:0">Ritual Pagi</div>
+        <div style="font-size:12px;color:var(--text-muted)">{{ today_str }}</div>
+      </div>
+      <button class="btn-icon" onclick="closeModal('morningModal')" style="margin-left:auto">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:20px;margin-top:20px">
+      <!-- Energy -->
+      <div>
+        <div class="form-label" style="margin-bottom:10px">⚡ Level Energimu Pagi Ini</div>
+        <div class="energy-row" id="energyMorning">
+          <div class="energy-btn" data-val="1" onclick="setEnergy('morning',1)">😴<span class="energy-label">Lelah</span></div>
+          <div class="energy-btn" data-val="2" onclick="setEnergy('morning',2)">😪<span class="energy-label">Ngantuk</span></div>
+          <div class="energy-btn" data-val="3" onclick="setEnergy('morning',3)">😊<span class="energy-label">Oke</span></div>
+          <div class="energy-btn" data-val="4" onclick="setEnergy('morning',4)">⚡<span class="energy-label">Semangat</span></div>
+          <div class="energy-btn" data-val="5" onclick="setEnergy('morning',5)">🔥<span class="energy-label">Luar biasa</span></div>
+        </div>
+      </div>
+
+      <!-- Mood -->
+      <div>
+        <div class="form-label" style="margin-bottom:10px">😊 Mood Pagi</div>
+        <div class="mood-mini" id="moodMorning">
+          {% for emoji,label in [('😊','Happy'),('🔥','Motivated'),('😌','Calm'),('💪','Energetic'),('🎯','Focused'),('😴','Tired'),('😤','Frustrated'),('🌟','Excellent')] %}
+          <div class="mood-mini-btn" data-mood="{{ emoji }}" data-label="{{ label }}" onclick="setMood('morning','{{ emoji }}','{{ label }}')">{{ emoji }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Word of Day -->
+      <div>
+        <div class="form-label" style="margin-bottom:8px">✨ Satu Kata Tema Hari Ini</div>
+        <input type="text" class="form-input" id="wordOfDay" placeholder="Fokus, Berani, Sabar, Syukur..." maxlength="30"
+               value="{{ morning.word_of_day if morning else '' }}">
+        <div class="word-chips">
+          {% for w in ['Fokus','Berani','Sabar','Syukur','Konsisten','Kreatif','Tenang','Disiplin'] %}
+          <span class="word-chip" onclick="document.getElementById('wordOfDay').value='{{ w }}'">{{ w }}</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Gratitude -->
+      <div>
+        <div class="form-label" style="margin-bottom:10px">🙏 3 Hal yang Kamu Syukuri</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input type="text" class="form-input" id="grat1" placeholder="1. Aku bersyukur atas..." value="{{ morning.gratitude_1 if morning else '' }}">
+          <input type="text" class="form-input" id="grat2" placeholder="2. Aku bersyukur atas..." value="{{ morning.gratitude_2 if morning else '' }}">
+          <input type="text" class="form-input" id="grat3" placeholder="3. Aku bersyukur atas..." value="{{ morning.gratitude_3 if morning else '' }}">
+        </div>
+      </div>
+
+      <!-- Intentions -->
+      <div>
+        <div class="form-label" style="margin-bottom:10px">🎯 3 Rencana Utama Hari Ini</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input type="text" class="form-input" id="int1" placeholder="1. Hal terpenting yang harus selesai..." value="{{ morning.intention_1 if morning else '' }}">
+          <input type="text" class="form-input" id="int2" placeholder="2. ..." value="{{ morning.intention_2 if morning else '' }}">
+          <input type="text" class="form-input" id="int3" placeholder="3. ..." value="{{ morning.intention_3 if morning else '' }}">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" onclick="closeModal('morningModal')" style="flex:1">Batal</button>
+        <button class="btn ritual-cta" onclick="saveMorning()"
+                style="flex:2;background:linear-gradient(135deg,var(--gold),#b8962e);color:#000;font-weight:700">
+          <i data-lucide="sun" style="width:14px;height:14px"></i> Simpan Ritual Pagi
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     EVENING RITUAL MODAL
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="eveningModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <span style="font-size:28px">🌙</span>
+      <div>
+        <div class="modal-title" style="margin-bottom:0">Refleksi Malam</div>
+        <div style="font-size:12px;color:var(--text-muted)">{{ today_str }}</div>
+      </div>
+      <button class="btn-icon" onclick="closeModal('eveningModal')" style="margin-left:auto">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+
+    {% if morning %}
+    <!-- Intention vs Reality -->
+    <div style="background:var(--bg-elevated);border:1px solid rgba(212,175,55,0.15);border-radius:var(--radius-md);padding:14px;margin:16px 0">
+      <div class="form-label" style="margin-bottom:10px">🎯 Intention vs Reality — Berapa yang terwujud?</div>
+      {% for i, plan in [(1,morning.intention_1),(2,morning.intention_2),(3,morning.intention_3)] %}
+      {% if plan %}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <input type="checkbox" id="ivr{{ i }}" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer">
+        <label for="ivr{{ i }}" style="font-size:13px;cursor:pointer">{{ plan }}</label>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div style="display:flex;flex-direction:column;gap:18px;margin-top:16px">
+      <!-- Energy -->
+      <div>
+        <div class="form-label" style="margin-bottom:10px">⚡ Energimu Sekarang (Malam)</div>
+        <div class="energy-row" id="energyEvening">
+          <div class="energy-btn" data-val="1" onclick="setEnergy('evening',1)">😴<span class="energy-label">Habis</span></div>
+          <div class="energy-btn" data-val="2" onclick="setEnergy('evening',2)">😪<span class="energy-label">Lelah</span></div>
+          <div class="energy-btn" data-val="3" onclick="setEnergy('evening',3)">😊<span class="energy-label">Oke</span></div>
+          <div class="energy-btn" data-val="4" onclick="setEnergy('evening',4)">⚡<span class="energy-label">Masih oke</span></div>
+          <div class="energy-btn" data-val="5" onclick="setEnergy('evening',5)">🌟<span class="energy-label">Segar</span></div>
+        </div>
+      </div>
+
+      <!-- Mood malam -->
+      <div>
+        <div class="form-label" style="margin-bottom:10px">🌙 Mood Malam Ini</div>
+        <div class="mood-mini" id="moodEvening">
+          {% for emoji,label in [('😊','Happy'),('😌','Calm'),('😴','Tired'),('😤','Frustrated'),('🙏','Grateful'),('😎','Satisfied'),('🤔','Reflective'),('💜','Peaceful')] %}
+          <div class="mood-mini-btn" data-mood="{{ emoji }}" data-label="{{ label }}" onclick="setMood('evening','{{ emoji }}','{{ label }}')">{{ emoji }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Highlight -->
+      <div class="form-group">
+        <label class="form-label">🏆 Highlight Hari Ini — 1 hal terbaik</label>
+        <input type="text" class="form-input" id="highlight"
+               placeholder="Hal terbaik yang terjadi hari ini..."
+               value="{{ evening.highlight if evening else '' }}">
+      </div>
+
+      <!-- Micro Journal -->
+      <div class="form-group">
+        <label class="form-label">📝 Micro Journal — Apa yang kamu rasakan/pelajari?</label>
+        <textarea class="form-textarea" id="microJournal" rows="3"
+          placeholder="1-3 kalimat bebas. Nggak harus panjang, yang penting jujur...">{{ evening.micro_journal if evening else '' }}</textarea>
+      </div>
+
+      <!-- Gratitude close -->
+      <div class="form-group">
+        <label class="form-label">🙏 Satu Kalimat Syukur Penutup</label>
+        <input type="text" class="form-input" id="gratClose"
+               placeholder="Aku bersyukur hari ini karena..."
+               value="{{ evening.gratitude_close if evening else '' }}">
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" onclick="closeModal('eveningModal')" style="flex:1">Batal</button>
+        <button class="btn ritual-cta" onclick="saveEvening()"
+                style="flex:2;background:linear-gradient(135deg,#2d2460,#6366f1);color:#fff;font-weight:700">
+          <i data-lucide="moon" style="width:14px;height:14px"></i> Simpan Refleksi
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SHARE CARD OVERLAY
+══════════════════════════════════════════ -->
+<div class="share-overlay" id="shareOverlay" onclick="if(event.target===this)closeShareCard()">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:16px">
+
+    <!-- THE CARD -->
+    <div class="share-card" id="theShareCard">
+      <div class="sc-logo">
+        <div class="sc-logo-icon">
+          <svg width="14" height="14" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div>
+          <div class="sc-logo-text">ActivityOS</div>
+          <div class="sc-logo-sub">ESQ · Daily Card</div>
+        </div>
+      </div>
+
+      <div class="sc-word" id="sc-word">—</div>
+      <div class="sc-tagline" id="sc-tagline">Kata tema hari ini</div>
+      <div class="sc-divider"></div>
+
+      <div class="sc-stat-row">
+        <div class="sc-stat-icon">🔥</div>
+        <div class="sc-stat-val" id="sc-streak">0</div>
+        <div class="sc-stat-lbl">hari streak berturut-turut</div>
+      </div>
+      <div class="sc-stat-row">
+        <div class="sc-stat-icon">✅</div>
+        <div class="sc-stat-val" id="sc-tasks">0/0</div>
+        <div class="sc-stat-lbl">task diselesaikan</div>
+      </div>
+      <div class="sc-stat-row">
+        <div class="sc-stat-icon">⚡</div>
+        <div class="sc-energy" id="sc-energy"></div>
+      </div>
+      <div class="sc-stat-row" id="sc-isq-row" style="display:none">
+        <div class="sc-stat-icon">✦</div>
+        <div class="sc-stat-val" id="sc-isq">—</div>
+        <div class="sc-stat-lbl" id="sc-isq-mode">ESQ Score</div>
+      </div>
+
+      <div class="sc-journal" id="sc-journal" style="display:none"></div>
+
+      <div class="sc-footer">
+        <div class="sc-date" id="sc-date">—</div>
+        <div class="sc-watermark">activityos.app</div>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="share-actions">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="btn btn-primary" onclick="downloadCard()" style="justify-content:center;font-size:12px">
+          <i data-lucide="download" style="width:13px;height:13px"></i> Download
+        </button>
+        <button class="btn btn-ghost" onclick="shareToWhatsApp()" style="justify-content:center;font-size:12px">
+          <span style="font-size:14px">💬</span> WhatsApp
+        </button>
+      </div>
+      <button class="btn btn-ghost" onclick="closeShareCard()" style="width:100%;justify-content:center;font-size:12px">
+        Tutup
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- AI Voice FAB -->
+<button class="voice-fab" id="voiceFab" onclick="speakContextual()" title="AI Voice Companion">
+  <svg width="22" height="22" fill="none" stroke="#000" stroke-width="2.5" viewBox="0 0 24 24">
+    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+  </svg>
+</button>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── STATE ──
+let energyMorning = {{ (today.morning.energy_level if today.morning else 3)|int }};
+let energyEvening = {{ (today.evening.energy_level if today.evening else 3)|int }};
+let moodMorning   = { emoji:'{{ today.morning.mood if today.morning else "" }}', label:'{{ today.morning.mood_label if today.morning else "" }}' };
+let moodEvening   = { emoji:'{{ today.evening.mood if today.evening else "" }}', label:'{{ today.evening.mood_label if today.evening else "" }}' };
+
+// Init energy buttons
+function initEnergy(ctx, val) {
+  document.querySelectorAll(`#energy${ctx[0].toUpperCase()+ctx.slice(1)} .energy-btn`).forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.val) === val);
+  });
+}
+function setEnergy(ctx, val) {
+  if (ctx==='morning') energyMorning=val; else energyEvening=val;
+  initEnergy(ctx, val);
+}
+
+function setMood(ctx, emoji, label) {
+  if (ctx==='morning') moodMorning={emoji,label}; else moodEvening={emoji,label};
+  document.querySelectorAll(`#mood${ctx[0].toUpperCase()+ctx.slice(1)} .mood-mini-btn`).forEach(b => {
+    b.classList.toggle('active', b.dataset.mood===emoji);
+  });
+}
+
+// Pre-fill energy & mood state
+initEnergy('morning', energyMorning);
+initEnergy('evening', energyEvening);
+if (moodMorning.emoji) setMood('morning', moodMorning.emoji, moodMorning.label);
+if (moodEvening.emoji) setMood('evening', moodEvening.emoji, moodEvening.label);
+
+// ── TABS ──
+function switchTab(id) {
+  document.querySelectorAll('.isq-tab').forEach((b,i) => {
+    const ids = ['today','history','capsule'];
+    b.classList.toggle('active', ids[i]===id);
+  });
+  document.querySelectorAll('.isq-tab-pane').forEach(p => {
+    p.classList.toggle('active', p.id==='tab-'+id);
+  });
+}
+
+// ── SAVE MORNING ──
+async function saveMorning() {
+  const data = {
+    energy:      energyMorning,
+    mood:        moodMorning.emoji,
+    mood_label:  moodMorning.label,
+    word_of_day: document.getElementById('wordOfDay').value.trim(),
+    gratitude_1: document.getElementById('grat1').value.trim(),
+    gratitude_2: document.getElementById('grat2').value.trim(),
+    gratitude_3: document.getElementById('grat3').value.trim(),
+    intention_1: document.getElementById('int1').value.trim(),
+    intention_2: document.getElementById('int2').value.trim(),
+    intention_3: document.getElementById('int3').value.trim(),
+  };
+  const res = await fetch('/api/isq/morning',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  if (res.ok) {
+    closeModal('morningModal');
+    showToast('Ritual pagi tersimpan! 🌅','success');
+    speakVoice('morning');
+    setTimeout(()=>location.reload(),1500);
+  }
+}
+
+// ── SAVE EVENING ──
+async function saveEvening() {
+  const ivr = [1,2,3].filter(i => {
+    const el = document.getElementById('ivr'+i);
+    return el && el.checked;
+  }).length;
+  const data = {
+    energy:          energyEvening,
+    mood:            moodEvening.emoji,
+    mood_label:      moodEvening.label,
+    intention_done:  ivr,
+    micro_journal:   document.getElementById('microJournal').value.trim(),
+    highlight:       document.getElementById('highlight').value.trim(),
+    gratitude_close: document.getElementById('gratClose').value.trim(),
+  };
+  const res  = await fetch('/api/isq/evening',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  const json = await res.json();
+  if (res.ok) {
+    closeModal('eveningModal');
+    showToast(`Refleksi malam tersimpan! ESQ Score: ${json.score} ✨`,'success');
+    speakVoice('evening');
+    setTimeout(()=>location.reload(),1800);
+  }
+}
+
+// ── AI VOICE (Web Speech API) ──
+let isSpeaking = false;
+const synth = window.speechSynthesis;
+
+async function speakVoice(slot) {
+  if (!synth) { showToast('Browser tidak support Web Speech','error'); return; }
+  if (isSpeaking) { synth.cancel(); isSpeaking=false; updateVoiceFab(false); return; }
+
+  try {
+    const res  = await fetch(`/api/isq/voice-script?slot=${slot}`);
+    const data = await res.json();
+    speak(data.text);
+  } catch(e) { speak('Hei! Jangan lupa isi ritual harian kamu ya!'); }
+}
+
+async function speakContextual() {
+  const hour = new Date().getHours();
+  let slot = 'reminder';
+  if (hour >= 5  && hour < 11) slot = 'morning';
+  if (hour >= 19 && hour < 24) slot = 'evening';
+  speakVoice(slot);
+}
+
+function speak(text) {
+  synth.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  // Try to find Indonesian voice
+  const voices = synth.getVoices();
+  const idVoice = voices.find(v => v.lang.startsWith('id')) ||
+                  voices.find(v => v.lang.startsWith('en-US') && v.name.includes('Google')) ||
+                  voices[0];
+  if (idVoice) utt.voice = idVoice;
+  utt.lang  = 'id-ID';
+  utt.rate  = 0.92;
+  utt.pitch = 1.05;
+  utt.volume= 1;
+  utt.onstart = () => { isSpeaking=true; updateVoiceFab(true); };
+  utt.onend   = () => { isSpeaking=false; updateVoiceFab(false); };
+  synth.speak(utt);
+}
+
+function updateVoiceFab(speaking) {
+  const fab = document.getElementById('voiceFab');
+  if (speaking) fab.classList.add('speaking'); else fab.classList.remove('speaking');
+}
+
+// Init voices
+if (synth && synth.getVoices().length === 0) synth.addEventListener('voiceschanged', ()=>{});
+
+// ── SHARE CARD ──
+async function openShareCard() {
+  const res  = await fetch('/api/share-card/data');
+  const d    = await res.json();
+
+  document.getElementById('sc-word').textContent    = d.word_of_day || '—';
+  document.getElementById('sc-tagline').textContent = d.word_of_day ? 'Kata tema hari ini' : 'ActivityOS Journal';
+  document.getElementById('sc-streak').textContent  = d.streak;
+  document.getElementById('sc-tasks').textContent   = `${d.tasks_done}/${d.tasks_total}`;
+  document.getElementById('sc-date').textContent    = d.date;
+
+  // Energy dots
+  const energyEl = document.getElementById('sc-energy');
+  energyEl.innerHTML = '';
+  for (let i=1;i<=5;i++) {
+    const dot = document.createElement('div');
+    dot.className = 'sc-energy-dot ' + (i<=d.energy?'on':'off');
+    energyEl.appendChild(dot);
+  }
+
+  // ISQ
+  if (d.isq_score) {
+    document.getElementById('sc-isq-row').style.display='flex';
+    document.getElementById('sc-isq').textContent = d.isq_score;
+    document.getElementById('sc-isq-mode').textContent = d.isq_mode ? d.isq_mode.charAt(0).toUpperCase()+d.isq_mode.slice(1)+' Mode' : 'ESQ Score';
+  }
+
+  // Journal
+  const jEl = document.getElementById('sc-journal');
+  if (d.micro_journal) {
+    jEl.style.display='block';
+    jEl.textContent = d.micro_journal.slice(0,100) + (d.micro_journal.length>100?'...':'');
+  } else if (d.highlight) {
+    jEl.style.display='block';
+    jEl.textContent = d.highlight;
+  }
+
+  document.getElementById('shareOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function closeShareCard() {
+  document.getElementById('shareOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+async function downloadCard() {
+  // Use html2canvas if available, otherwise guide user
+  if (typeof html2canvas !== 'undefined') {
+    const card   = document.getElementById('theShareCard');
+    const canvas = await html2canvas(card, {backgroundColor:'#0a0a08', scale:3});
+    const a = document.createElement('a');
+    a.download = `activityos-${new Date().toISOString().split('T')[0]}.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  } else {
+    showToast('Tips: Screenshot halaman ini & crop kartu yang ada 📸','success');
+  }
+}
+
+function shareToWhatsApp() {
+  const sc = document.getElementById('theShareCard');
+  const text = encodeURIComponent(
+    `✦ ActivityOS Daily Card ✦\n` +
+    `${document.getElementById('sc-word').textContent} 🔥 ${document.getElementById('sc-streak').textContent} hari streak\n` +
+    `✅ Task: ${document.getElementById('sc-tasks').textContent}\n` +
+    `${document.getElementById('sc-date').textContent}\n\n` +
+    `#ActivityOS #ISQ #DailyGrowth`
+  );
+  window.open(`https://wa.me/?text=${text}`, '_blank');
+}
+
+// ── TIME CAPSULE ──
+function setCapsulePreset(days) {
+  if (!days) return;
+  const d = new Date();
+  d.setDate(d.getDate() + parseInt(days));
+  document.getElementById('capsuleDate').value = d.toISOString().split('T')[0];
+}
+
+async function saveCapsule() {
+  const msg  = document.getElementById('capsuleMsg').value.trim();
+  const date = document.getElementById('capsuleDate').value;
+  if (!msg)  { showToast('Tulis pesannya dulu','error'); return; }
+  if (!date) { showToast('Pilih tanggal buka','error'); return; }
+  const res = await fetch('/api/capsule',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,open_date:date})});
+  if (res.ok) {
+    document.getElementById('capsuleMsg').value  = '';
+    document.getElementById('capsuleDate').value = '';
+    showToast('Time capsule terkirim ke masa depan! 📮','success');
+    speakVoice_text(`Pesanmu sudah tersimpan. Kamu akan membacanya lagi nanti, dari dirimu sendiri hari ini.`);
+  }
+}
+
+function speakVoice_text(text) { speak(text); }
+
+async function openCapsule(id) {
+  await fetch(`/api/capsule/${id}/open`,{method:'POST'});
+  showToast('Time capsule ditandai sudah dibaca ✓','success');
+  setTimeout(()=>location.reload(),800);
+}
+
+// ── STREAK MILESTONE CHECK ──
+const streak = {{ streak.current_streak or 0 }};
+if ([7,14,30,60,100,365].includes(streak)) {
+  setTimeout(() => {
+    launchConfetti();
+    speakVoice('milestone');
+    showToast(`🏆 Milestone! ${streak} hari streak!`, 'success');
+  }, 1500);
+}
+</script>
+
+<!-- html2canvas untuk download share card -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+{% endblock %}

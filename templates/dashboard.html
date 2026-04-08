@@ -1,0 +1,944 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — ActivityOS{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_meta %}{{ today_str }}{% endblock %}
+{% block topbar_actions %}
+<button class="btn btn-primary" onclick="openModal('addTaskModal')" style="padding:8px 14px;font-size:12px">
+  <i data-lucide="plus" style="width:14px;height:14px"></i> Task Baru
+</button>
+{% endblock %}
+
+{% block head %}
+<style>
+.dash-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; margin-bottom:20px; }
+.dash-main { display:grid; grid-template-columns:1fr 340px; gap:16px; }
+.dash-left { display:flex; flex-direction:column; gap:16px; }
+.dash-right { display:flex; flex-direction:column; gap:16px; }
+
+/* STAT CARD */
+.stat-card {
+  background:var(--bg-surface); border:1px solid var(--border);
+  border-radius:var(--radius-lg); padding:20px;
+  position:relative; overflow:hidden; cursor:default;
+  transition:border-color 0.2s, transform 0.2s var(--ease);
+}
+.stat-card:hover { border-color:var(--border-bright); transform:translateY(-2px); }
+.stat-card-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:16px; }
+.stat-card-label { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+.stat-card-value { font-family:'Space Mono',monospace; font-size:30px; font-weight:700; line-height:1; margin-bottom:4px; }
+.stat-card-sub { font-size:12px; color:var(--text-muted); }
+
+/* MOOD BANNER */
+.mood-banner {
+  background:var(--bg-surface); border:1px solid var(--border);
+  border-radius:var(--radius-lg); padding:16px 20px;
+  display:flex; align-items:center; gap:16px;
+  margin-bottom:20px; cursor:pointer;
+  transition:all 0.2s;
+}
+.mood-banner:hover { border-color:var(--border-bright); background:var(--bg-elevated); }
+.mood-emoji-display { font-size:32px; line-height:1; animation:moodFloat 3s ease-in-out infinite; }
+@keyframes moodFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+.mood-moods { display:flex; gap:8px; margin-top:6px; }
+.mood-btn {
+  font-size:22px; padding:6px; border-radius:10px; cursor:pointer;
+  border:2px solid transparent; transition:all 0.15s; background:var(--bg-elevated);
+}
+.mood-btn:hover { transform:scale(1.2); border-color:var(--indigo); }
+.mood-btn.selected { border-color:var(--indigo); background:var(--indigo-glow); }
+
+/* TASK ITEM */
+.task-list { display:flex; flex-direction:column; gap:8px; }
+.task-item {
+  background:var(--bg-elevated); border:1px solid var(--border);
+  border-radius:var(--radius-md); padding:14px 14px 14px 12px;
+  display:flex; align-items:center; gap:12px;
+  transition:all 0.2s var(--ease); position:relative;
+}
+.task-item:hover { border-color:var(--border-bright); background:var(--bg-hover); }
+.task-item.done { opacity:0.45; }
+.task-item.done .task-title { text-decoration:line-through; color:var(--text-muted); }
+.task-checkbox {
+  width:22px; height:22px; border:2px solid var(--border-bright);
+  border-radius:6px; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:all 0.2s; cursor:pointer;
+}
+.task-item.done .task-checkbox { background:var(--emerald); border-color:var(--emerald); }
+.task-title { font-size:14px; font-weight:500; flex:1; }
+.task-meta { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); margin-top:4px; }
+.task-actions { display:flex; align-items:center; gap:4px; }
+.task-action-btn {
+  width:28px; height:28px; border-radius:6px; background:transparent; border:none;
+  color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  opacity:0; transition:all 0.2s;
+}
+.task-item:hover .task-action-btn { opacity:1; }
+.task-action-btn:hover { background:var(--bg-overlay); color:var(--text-primary); }
+.task-action-btn.pomo-start:hover { color:var(--rose); }
+.task-action-btn.del:hover { color:var(--rose); background:rgba(244,63,94,0.1); }
+
+/* WEEKLY BARS */
+.weekly-bars { display:flex; align-items:flex-end; gap:6px; height:80px; }
+.weekly-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; }
+.weekly-bar-track { flex:1; width:100%; background:var(--bg-overlay); border-radius:4px; overflow:hidden; display:flex; align-items:flex-end; }
+.weekly-bar-fill { width:100%; background:linear-gradient(180deg,var(--indigo),var(--cyan)); border-radius:4px; transition:height 1s var(--ease); min-height:2px; }
+.weekly-bar-fill.today-bar { background:linear-gradient(180deg,var(--emerald),var(--cyan)); box-shadow:0 0 12px rgba(16,185,129,0.4); }
+.weekly-bar-label { font-size:10px; color:var(--text-muted); font-family:'Space Mono',monospace; }
+
+/* CONTRIB GRID */
+.contrib-grid { display:flex; gap:3px; overflow-x:auto; padding-bottom:4px; }
+.contrib-col { display:flex; flex-direction:column; gap:3px; }
+.contrib-cell { width:12px; height:12px; border-radius:3px; background:var(--bg-overlay); transition:transform 0.1s; cursor:pointer; flex-shrink:0; }
+.contrib-cell:hover { transform:scale(1.4); }
+.contrib-cell[data-level="1"] { background:rgba(99,102,241,0.25); }
+.contrib-cell[data-level="2"] { background:rgba(99,102,241,0.5); }
+.contrib-cell[data-level="3"] { background:rgba(99,102,241,0.75); }
+.contrib-cell[data-level="4"] { background:var(--indigo); box-shadow:0 0 6px var(--indigo-glow); }
+
+/* GOAL CARD */
+.goal-item { display:flex; align-items:center; gap:12px; padding:12px; background:var(--bg-elevated); border-radius:var(--radius-sm); border:1px solid var(--border); transition:all 0.2s; }
+.goal-item:hover { border-color:var(--border-bright); }
+.goal-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.goal-info { flex:1; min-width:0; }
+.goal-title { font-size:13px; font-weight:600; margin-bottom:6px; }
+.goal-pct { font-family:'Space Mono',monospace; font-size:13px; font-weight:700; flex-shrink:0; min-width:36px; text-align:right; }
+
+/* STREAK */
+.streak-number { font-family:'Space Mono',monospace; font-size:42px; font-weight:700; color:var(--amber); line-height:1; text-shadow:0 0 20px rgba(245,158,11,0.4); }
+.streak-flame { font-size:40px; line-height:1; animation:flame 2s ease-in-out infinite; }
+@keyframes flame { 0%,100%{transform:scale(1) rotate(-3deg)} 50%{transform:scale(1.1) rotate(3deg)} }
+
+@media (max-width:1100px) {
+  .dash-grid { grid-template-columns:1fr 1fr; }
+  .dash-main { grid-template-columns:1fr; }
+  .dash-right { flex-direction:row; flex-wrap:wrap; }
+  .dash-right .card { flex:1; min-width:280px; }
+}
+@media (max-width:640px) {
+  .dash-grid { grid-template-columns:1fr 1fr; gap:10px; }
+  .stat-card-value { font-size:24px; }
+  .stat-card-icon { display:none; }
+  .dash-right .card { min-width:100%; }
+  .contrib-cell { width:10px; height:10px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- MOOD BANNER -->
+<div class="mood-banner animate-fade-up" onclick="openGlobalMoodModal()" id="moodBanner" style="cursor:pointer">
+  <div>
+    <div class="mood-emoji-display" id="moodDisplay">
+      {{ mood.mood if mood else '🤔' }}
+    </div>
+  </div>
+  <div style="flex:1">
+    {% if mood %}
+      <div style="font-size:14px;font-weight:600">Mood hari ini: <strong>{{ mood.mood_label }}</strong></div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Klik untuk ubah mood</div>
+    {% else %}
+      <div style="font-size:14px;font-weight:600">Halo, {{ session.get('full_name','User').split()[0] }}! 👋</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Bagaimana perasaanmu hari ini?</div>
+    {% endif %}
+  </div>
+  <button onclick="event.stopPropagation();openGlobalMoodModal()"
+    style="font-size:11px;font-weight:700;color:var(--indigo);background:var(--indigo-glow);border:1.5px solid var(--indigo);border-radius:100px;padding:5px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0">
+    😊 {{ 'Ubah Mood' if mood else 'Set Mood' }}
+  </button>
+</div>
+
+<!-- REMINDER WIDGET -->
+<div class="card animate-fade-up" style="animation-delay:0.1s;border-left:3px solid #6366f1" id="reminderWidget">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div>
+      <div class="card-title">⏰ Pengingat Hari Ini</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:1px" id="remWidgetDate"></div>
+    </div>
+    <a href="/reminders" style="font-size:11px;color:var(--indigo);background:var(--indigo-glow);border:1px solid rgba(99,102,241,0.3);border-radius:8px;padding:4px 10px;text-decoration:none;font-weight:600;flex-shrink:0">
+      Kelola →
+    </a>
+  </div>
+  <!-- Progress bar -->
+  <div style="background:var(--bg-elevated);border-radius:4px;height:4px;margin-bottom:12px;overflow:hidden">
+    <div id="remWidgetBar" style="height:4px;background:linear-gradient(90deg,#6366f1,#06b6d4);border-radius:4px;width:0%;transition:width 0.6s ease"></div>
+  </div>
+  <!-- List -->
+  <div id="remWidgetList">
+    <div class="skeleton" style="height:36px;border-radius:8px;margin-bottom:6px"></div>
+    <div class="skeleton" style="height:36px;border-radius:8px"></div>
+  </div>
+  <div id="remWidgetEmpty" style="display:none;text-align:center;padding:16px 8px;color:var(--text-muted);font-size:12px">
+    <div style="font-size:24px;margin-bottom:6px">✅</div>
+    Belum ada pengingat —
+    <a href="/reminders" style="color:var(--indigo)">buat sekarang</a>
+  </div>
+</div>
+
+<!-- FINANCE WIDGET -->
+<div class="card animate-fade-up" id="financeWidget" style="animation-delay:0.15s;border-left:3px solid #10b981;display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div class="card-title">💰 Finansial</div>
+    <a href="/finance" style="font-size:11px;color:#10b981;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:4px 10px;text-decoration:none;font-weight:600">Buka →</a>
+  </div>
+  <div id="finWidgetContent" style="font-size:12px;color:var(--text-muted)">Memuat...</div>
+</div>
+
+<!-- ISQ MORNING PROMPT (shown if not filled) -->
+
+<div id="isqPromptBanner" class="animate-fade-up" style="display:none;background:linear-gradient(135deg,#0d0d0a,#1a1500);border:1px solid rgba(212,175,55,0.25);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all 0.2s" onclick="window.location='/isq'">
+  <div style="font-size:28px">✨</div>
+  <div style="flex:1">
+    <div style="font-size:14px;font-weight:700;background:linear-gradient(135deg,#d4af37,#f5e27e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">ISQ Morning Ritual belum diisi</div>
+    <div style="font-size:12px;color:rgba(212,175,55,0.5);margin-top:2px">Set intention, gratitude, dan energi paginya — 2 menit saja</div>
+  </div>
+  <div style="font-size:12px;color:rgba(212,175,55,0.6);border:1px solid rgba(212,175,55,0.2);border-radius:100px;padding:5px 12px;white-space:nowrap">Mulai →</div>
+</div>
+
+<!-- STAT CARDS -->
+<div class="dash-grid">
+  <div class="stat-card animate-fade-up delay-1">
+    <div class="card-glow" style="background:var(--indigo)"></div>
+    <div class="stat-card-icon" style="background:rgba(99,102,241,0.15)">
+      <i data-lucide="check-circle" style="width:20px;height:20px;color:var(--indigo)"></i>
+    </div>
+    <div class="stat-card-label">Selesai Hari Ini</div>
+    <div class="stat-card-value" style="color:var(--indigo)" data-count="{{ done_today }}">0</div>
+    <div class="stat-card-sub">dari {{ total_today }} task · {{ pct_today }}%</div>
+  </div>
+  <div class="stat-card animate-fade-up delay-2">
+    <div class="card-glow" style="background:var(--amber)"></div>
+    <div class="stat-card-icon" style="background:rgba(245,158,11,0.15)">
+      <i data-lucide="flame" style="width:20px;height:20px;color:var(--amber)"></i>
+    </div>
+    <div class="stat-card-label">Streak Aktif</div>
+    <div class="stat-card-value" style="color:var(--amber)" data-count="{{ streak.current_streak or 0 }}">0</div>
+    <div class="stat-card-sub">hari berturut-turut</div>
+  </div>
+  <div class="stat-card animate-fade-up delay-3">
+    <div class="card-glow" style="background:var(--emerald)"></div>
+    <div class="stat-card-icon" style="background:rgba(16,185,129,0.15)">
+      <i data-lucide="target" style="width:20px;height:20px;color:var(--emerald)"></i>
+    </div>
+    <div class="stat-card-label">Goals Aktif</div>
+    <div class="stat-card-value" style="color:var(--emerald)" data-count="{{ goals|length }}">0</div>
+    <div class="stat-card-sub">tahun {{ now().year }}</div>
+  </div>
+  <div class="stat-card animate-fade-up delay-4">
+    <div class="card-glow" style="background:var(--cyan)"></div>
+    <div class="stat-card-icon" style="background:rgba(6,182,212,0.15)">
+      <i data-lucide="calendar" style="width:20px;height:20px;color:var(--cyan)"></i>
+    </div>
+    <div class="stat-card-label">Total Hari Aktif</div>
+    <div class="stat-card-value" style="color:var(--cyan)" data-count="{{ streak.total_days or 0 }}">0</div>
+    <div class="stat-card-sub">sejak bergabung</div>
+  </div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="dash-main">
+  <div class="dash-left">
+
+    <!-- TODAY TASKS -->
+    <div class="card animate-fade-up" style="animation-delay:0.2s">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Task Hari Ini</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">{{ today_str }}</div>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('addTaskModal')" style="padding:8px 12px;font-size:12px">
+          <i data-lucide="plus" style="width:12px;height:12px"></i> Tambah
+        </button>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:12px;color:var(--text-secondary)">Progress</span>
+          <span style="font-size:12px;font-family:'Space Mono',monospace;color:var(--indigo)">{{ pct_today }}%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="mainProgress" style="width:0%"></div></div>
+      </div>
+      <div class="task-list" id="taskList">
+        {% if tasks %}
+          {% for task in tasks %}
+          <div class="task-item {{ 'done' if task.status=='done' else '' }} priority-{{ task.priority }}"
+               id="task-{{ task.id }}" data-id="{{ task.id }}" data-status="{{ task.status }}">
+            <div class="task-checkbox" onclick="toggleTask({{ task.id }},{{ task.status | tojson }})">
+              {% if task.status=='done' %}
+                <i data-lucide="check" style="width:12px;height:12px;color:white"></i>
+              {% endif %}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div class="task-title">{{ task.title }}</div>
+              <div class="task-meta">
+                <i data-lucide="clock" style="width:10px;height:10px"></i> {{ task.duration_min }}m
+                {% if task.category %}<span>· <span class="chip" style="padding:1px 6px;font-size:10px">{{ task.category }}</span></span>{% endif %}
+                {% if task.milestone_title %}<span>· {{ task.milestone_title }}</span>{% endif %}
+              </div>
+              <!-- Pomodoro timer inline -->
+              <div class="pomo-wrap" id="pomo-{{ task.id }}">
+                <div class="live-clock-dot"></div>
+                <span class="pomo-time" id="pomo-time-{{ task.id }}">25:00</span>
+                <button class="pomo-btn" onclick="stopPomodoro({{ task.id }})">
+                  <i data-lucide="square" style="width:8px;height:8px"></i>
+                </button>
+              </div>
+            </div>
+            <div class="badge {{ 'badge-emerald' if task.priority=='low' else 'badge-amber' if task.priority=='medium' else 'badge-rose' }}" style="font-size:9px">{{ task.priority }}</div>
+            <div class="task-actions">
+              <button class="task-action-btn pomo-start" title="Start Pomodoro"
+                      onclick="startPomodoro({{ task.id }},{{ task.title | tojson }},{{ task.duration_min or 25 }})">
+                <i data-lucide="timer" style="width:13px;height:13px"></i>
+              </button>
+              <button class="task-action-btn del" onclick="deleteTask({{ task.id }})">
+                <i data-lucide="trash-2" style="width:13px;height:13px"></i>
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <i data-lucide="inbox" style="width:32px;height:32px"></i>
+            <p>Belum ada task hari ini.<br>Tambahkan task pertamamu!</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- WEEKLY BARS -->
+    <div class="card animate-fade-up" style="animation-delay:0.3s">
+      <div class="card-header">
+        <div class="card-title">Aktivitas Minggu Ini</div>
+        <span class="chip">7 Hari</span>
+      </div>
+      <div class="weekly-bars" id="weeklyBars">
+        {% for day in weekly %}
+        <div class="weekly-bar-wrap">
+          <div class="weekly-bar-track">
+            <div class="weekly-bar-fill {{ 'today-bar' if loop.last else '' }}"
+                 style="height:0%" data-pct="{{ (day.done_tasks/day.total_tasks*100)|int if day.total_tasks else 0 }}"
+                 title="{{ day.done_tasks }}/{{ day.total_tasks }} tasks · {{ day.total_minutes }}min"></div>
+          </div>
+          <div class="weekly-bar-label">{{ day.day[:1] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="dash-right">
+    <!-- STREAK -->
+    <div class="card animate-fade-up" style="animation-delay:0.25s">
+      <div class="card-title" style="margin-bottom:16px">🔥 Streak</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div class="streak-flame">🔥</div>
+        <div style="flex:1">
+          <div class="streak-number">{{ streak.current_streak or 0 }}</div>
+          <div style="font-size:13px;color:var(--text-secondary)">hari berturut-turut</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted)">RECORD</div>
+          <div style="font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--text-secondary)">{{ streak.longest_streak or 0 }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GOALS -->
+    <div class="card animate-fade-up" style="animation-delay:0.35s">
+      <div class="card-header">
+        <div class="card-title">Goals</div>
+        <a href="/roadmap" style="font-size:12px;color:var(--indigo);text-decoration:none">Semua →</a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        {% if goals %}{% for goal in goals %}
+        <div class="goal-item">
+          <div class="goal-icon" style="background:{{ goal.color }}22">
+            <i data-lucide="{{ goal.icon }}" style="width:16px;height:16px;color:{{ goal.color }}"></i>
+          </div>
+          <div class="goal-info">
+            <div class="goal-title">{{ goal.title }}</div>
+            <div class="progress-track" style="height:3px">
+              <div class="progress-fill goal-bar" style="width:0%;background:{{ goal.color }}" data-pct="{{ goal.progress_pct or 0 }}"></div>
+            </div>
+          </div>
+          <div class="goal-pct" style="color:{{ goal.color }}">{{ goal.progress_pct or 0 }}%</div>
+        </div>
+        {% endfor %}{% else %}
+        <div class="empty-state" style="padding:24px">
+          <p style="font-size:12px">Belum ada goal.<br><a href="/roadmap" style="color:var(--indigo)">Buat sekarang</a></p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- QUICK NOTES -->
+    <div class="card animate-fade-up" style="animation-delay:0.38s">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📝 Quick Notes</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:1px" id="notesDayLabel">Hari ini</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="showNotesArchive()" title="Arsip catatan lama">
+            📅 Arsip
+          </button>
+          <button id="addNoteBtn" class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="addDashNote()">+ Baru</button>
+        </div>
+      </div>
+      <!-- Archive date picker (hidden by default) -->
+      <div id="notesArchiveBar" style="display:none;margin-bottom:10px;padding:8px 10px;background:var(--bg-elevated);border-radius:8px;gap:8px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:11px;color:var(--text-muted)">📅 Lihat catatan tanggal:</span>
+        <input type="date" id="notesDatePicker" class="form-input" style="padding:4px 8px;font-size:11px;width:auto;flex:1;min-width:130px"
+          onchange="onNotesDateChange(this.value)">
+        <button onclick="closeNotesArchive()"
+          style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px">✕ Tutup</button>
+      </div>
+      <!-- Dates that have notes -->
+      <div id="notesArchiveDots" style="display:none;flex-wrap:wrap;gap:6px;margin-bottom:8px;padding:0 2px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="dashNotesGrid">
+        <div class="skeleton" style="height:72px;border-radius:10px"></div>
+        <div class="skeleton" style="height:72px;border-radius:10px"></div>
+      </div>
+    </div>
+
+    <!-- CONTRIB GRID -->
+    <div class="card animate-fade-up" style="animation-delay:0.4s">
+      <div class="card-title" style="margin-bottom:12px">Kontribusi</div>
+      <div class="contrib-grid" id="contribGrid"></div>
+      <div style="display:flex;align-items:center;gap:4px;margin-top:10px">
+        <span style="font-size:10px;color:var(--text-muted)">Less</span>
+        <div style="width:10px;height:10px;border-radius:2px;background:var(--bg-overlay)"></div>
+        <div style="width:10px;height:10px;border-radius:2px;background:rgba(99,102,241,0.25)"></div>
+        <div style="width:10px;height:10px;border-radius:2px;background:rgba(99,102,241,0.5)"></div>
+        <div style="width:10px;height:10px;border-radius:2px;background:rgba(99,102,241,0.75)"></div>
+        <div style="width:10px;height:10px;border-radius:2px;background:var(--indigo)"></div>
+        <span style="font-size:10px;color:var(--text-muted)">More</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ADD TASK MODAL -->
+<div class="modal-overlay" id="addTaskModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">➕ Task Baru</div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="form-group">
+        <label class="form-label">Nama Task *</label>
+        <input type="text" class="form-input" id="taskTitle" placeholder="Contoh: Belajar Flask 2 jam">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Prioritas</label>
+          <select class="form-select" id="taskPriority">
+            <option value="low">🟢 Low</option>
+            <option value="medium" selected>🟡 Medium</option>
+            <option value="high">🟠 High</option>
+            <option value="urgent">🔴 Urgent</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Durasi (menit)</label>
+          <input type="number" class="form-input" id="taskDuration" value="25" min="1" max="480">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Kategori</label>
+          <select class="form-select" id="taskCategory">
+            <option value="general">General</option>
+            <option value="tech">Tech</option>
+            <option value="health">Health</option>
+            <option value="finance">Finance</option>
+            <option value="study">Study</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tanggal</label>
+          <input type="date" class="form-input" id="taskDate">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="btn btn-ghost" onclick="closeModal('addTaskModal')" style="flex:1">Batal</button>
+        <button class="btn btn-primary" onclick="submitTask()" style="flex:2;justify-content:center">
+          <i data-lucide="plus" style="width:14px;height:14px"></i> Simpan
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const gridData   = {{ grid   | tojson }};
+const pctToday   = {{ pct_today }};
+const doneToday  = {{ done_today }};
+const totalToday = {{ total_today }};
+
+// ── COUNTER ANIMATION ──
+function animateCount(el, target, duration=1200) {
+  let start = 0, step = target / (duration / 16);
+  const tick = () => {
+    start = Math.min(start + step, target);
+    el.textContent = Math.round(start);
+    if (start < target) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+// ── CONTRIB GRID ──
+function buildContribGrid() {
+  const container = document.getElementById('contribGrid');
+  if (!container) return;
+  const weeks = []; let week = [];
+  gridData.forEach((d,i) => {
+    week.push(d);
+    if (week.length===7||i===gridData.length-1) { weeks.push([...week]); week=[]; }
+  });
+  weeks.forEach(w => {
+    const col = document.createElement('div'); col.className='contrib-col';
+    w.forEach(d => {
+      const c = document.createElement('div'); c.className='contrib-cell';
+      c.dataset.level=d.level; c.title=`${d.date}: ${d.count} selesai`;
+      col.appendChild(c);
+    });
+    container.appendChild(col);
+  });
+}
+
+// ── INIT ANIMATIONS ──
+function initAnimations() {
+  document.querySelectorAll('[data-count]').forEach(el => {
+    animateCount(el, parseInt(el.dataset.count));
+  });
+  setTimeout(() => {
+    const mp = document.getElementById('mainProgress');
+    if (mp) mp.style.width = pctToday+'%';
+    document.querySelectorAll('.weekly-bar-fill').forEach(el => { el.style.height=el.dataset.pct+'%'; });
+    document.querySelectorAll('.goal-bar').forEach(el => { el.style.width=el.dataset.pct+'%'; });
+  }, 300);
+}
+
+// ── TASKS ──
+async function toggleTask(id, status) {
+  const ns = status==='done'?'todo':'done';
+  const res = await fetch(`/api/tasks/${id}/status`,{
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({status:ns})
+  });
+  if (!res.ok) return;
+  const el = document.getElementById(`task-${id}`);
+  if (!el) return;
+  el.dataset.status = ns;
+  const cb = el.querySelector('.task-checkbox');
+  if (ns==='done') {
+    el.classList.add('done');
+    cb.innerHTML='<i data-lucide="check" style="width:12px;height:12px;color:white"></i>';
+    cb.style.background='var(--emerald)'; cb.style.borderColor='var(--emerald)';
+    lucide.createIcons();
+    const allDone = [...document.querySelectorAll('.task-item')].every(t=>t.classList.contains('done'));
+    if (allDone && document.querySelectorAll('.task-item').length > 0) {
+      launchConfetti();
+      showToast('🎉 Semua task selesai! Luar biasa!','success');
+    } else {
+      showToast('Task selesai! ✅','success');
+    }
+  } else {
+    el.classList.remove('done');
+    cb.innerHTML=''; cb.style.background=''; cb.style.borderColor='';
+  }
+  const done  = document.querySelectorAll('.task-item.done').length;
+  const total = document.querySelectorAll('.task-item').length;
+  const mp = document.getElementById('mainProgress');
+  if (mp) mp.style.width=(total?Math.round(done/total*100):0)+'%';
+}
+
+async function deleteTask(id) {
+  if (!confirm('Hapus task ini?')) return;
+  const res = await fetch(`/api/tasks/${id}`,{method:'DELETE'});
+  if (res.ok) {
+    const el = document.getElementById(`task-${id}`);
+    if (el) el.remove();
+    showToast('Task dihapus','success');
+    if (!document.querySelectorAll('.task-item').length) {
+      const tl = document.getElementById('taskList');
+      if (tl) tl.innerHTML=`<div class="empty-state"><i data-lucide="inbox" style="width:32px;height:32px"></i><p>Belum ada task hari ini.</p></div>`;
+      lucide.createIcons();
+    }
+  }
+}
+
+async function submitTask() {
+  const title = document.getElementById('taskTitle').value.trim();
+  if (!title) { showToast('Judul task wajib diisi','error'); return; }
+  const data = {
+    title,
+    priority: document.getElementById('taskPriority').value,
+    duration_min: parseInt(document.getElementById('taskDuration').value)||25,
+    category: document.getElementById('taskCategory').value,
+    task_date: document.getElementById('taskDate').value||new Date().toISOString().split('T')[0]
+  };
+  const res = await fetch('/api/tasks',{
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
+  });
+  if (res.ok) {
+    closeModal('addTaskModal');
+    showToast('Task ditambahkan! ✨','success');
+    setTimeout(()=>location.reload(),700);
+  }
+}
+
+// ── QUICK NOTES ──
+const NOTE_COLORS_DASH = ['#6366f1','#10b981','#f59e0b','#f43f5e','#06b6d4'];
+
+// Track current viewing date
+let _notesViewDate = new Date().toISOString().split('T')[0];
+
+async function loadDashNotes(dateStr) {
+  // Update viewing date
+  if (dateStr) _notesViewDate = dateStr;
+  const isToday = (_notesViewDate === new Date().toISOString().split('T')[0]);
+
+  // Update label
+  const lbl = document.getElementById('notesDayLabel');
+  if (lbl) {
+    if (isToday) {
+      lbl.textContent = 'Hari ini';
+      lbl.style.color = 'var(--indigo)';
+    } else {
+      // Format tanggal jadi readable: "11 Mar 2026"
+      const d = new Date(_notesViewDate + 'T00:00:00');
+      const opts = { day:'numeric', month:'short', year:'numeric' };
+      lbl.textContent = d.toLocaleDateString('id-ID', opts);
+      lbl.style.color = 'var(--amber)';
+    }
+  }
+
+  // Show/hide "+ Baru" button — only allow adding notes for today
+  const addBtn = document.getElementById('addNoteBtn');
+  if (addBtn) addBtn.style.display = isToday ? '' : 'none';
+
+  const grid = document.getElementById('dashNotesGrid');
+  if (!grid) return;
+
+  // Loading skeleton
+  grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:16px;color:var(--text-muted);font-size:12px">
+    <div style="opacity:0.5">⏳ Memuat...</div>
+  </div>`;
+
+  try {
+    const res = await fetch('/api/notes?date=' + _notesViewDate);
+    if (!res.ok) throw new Error('Fetch failed');
+    const notes = await res.json();
+
+    if (!notes.length) {
+      if (isToday) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:20px 12px;color:var(--text-muted);font-size:12px">
+          <div style="font-size:28px;margin-bottom:8px">📝</div>
+          Belum ada catatan hari ini<br>
+          <span style="font-size:11px">Klik "+ Baru" untuk mulai</span>
+        </div>`;
+      } else {
+        // Tampilan kosong untuk tanggal lain
+        const d = new Date(_notesViewDate + 'T00:00:00');
+        const tgl = d.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px 16px;color:var(--text-muted)">
+          <div style="font-size:36px;margin-bottom:10px">🗓️</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">Tidak ada catatan</div>
+          <div style="font-size:11px;line-height:1.5">${tgl}</div>
+          <div style="font-size:10px;margin-top:8px;opacity:0.7">Tidak ada quick notes yang tersimpan di tanggal ini</div>
+        </div>`;
+      }
+      return;
+    }
+
+    // Render notes — helper function avoids nested template literals
+    function renderNoteCard(n, editable) {
+      const bg = n.color + '22';
+      const border = n.color + '44';
+      let ta = '<textarea style="background:transparent;border:none;outline:none;resize:none;' +
+               'width:100%;font-family:\'Outfit\',sans-serif;font-size:11px;color:var(--text-primary);' +
+               'line-height:1.4;min-height:44px"';
+      if (editable) {
+        ta += ' onblur="saveDashNote(' + n.id + ',this.value,\'' + n.color + '\')"';
+      } else {
+        ta += ' readonly';
+      }
+      ta += '>' + (n.content || '') + '</textarea>';
+
+      let delBtn = '';
+      if (editable) {
+        delBtn = '<button onclick="deleteNote(' + n.id + ')" ' +
+                 'style="position:absolute;top:4px;right:4px;background:none;border:none;' +
+                 'color:var(--text-muted);cursor:pointer;font-size:12px;line-height:1;padding:2px 4px;' +
+                 'border-radius:4px;opacity:0;transition:opacity 0.15s" class="note-del-btn">✕</button>';
+      }
+      return '<div style="border-radius:10px;padding:10px;background:' + bg + ';border:1px solid ' +
+             border + ';position:relative;min-height:72px">' + ta + delBtn + '</div>';
+    }
+
+    const maxShow = isToday ? 4 : notes.length;
+    grid.innerHTML = notes.slice(0, maxShow).map(n => renderNoteCard(n, isToday)).join('');
+
+    // Hover to show delete button
+    grid.querySelectorAll('.note-del-btn').forEach(btn => {
+      const card = btn.parentElement;
+      card.addEventListener('mouseenter', () => { btn.style.opacity = '1'; });
+      card.addEventListener('mouseleave', () => { btn.style.opacity = '0'; });
+    });
+
+    // Show "+N more" for today if > 4
+    if (isToday && notes.length > 4) {
+      const more = document.createElement('div');
+      more.style.cssText = 'grid-column:1/-1;text-align:center;padding:6px;font-size:10px;color:var(--text-muted)';
+      more.textContent = '+' + (notes.length - 4) + ' catatan lainnya';
+      grid.appendChild(more);
+    }
+  } catch(e) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:16px;color:var(--rose);font-size:11px">
+      Gagal memuat catatan
+    </div>`;
+    console.error('loadDashNotes error:', e);
+  }
+}
+
+async function deleteNote(id) {
+  try {
+    await fetch('/api/notes/' + id, { method: 'DELETE' });
+    await loadDashNotes();
+    showToast('Catatan dihapus', 'success');
+  } catch(e) {}
+}
+
+async function addDashNote() {
+  try {
+    const c    = NOTE_COLORS_DASH[Math.floor(Math.random()*NOTE_COLORS_DASH.length)];
+    const today = new Date().toISOString().split('T')[0];
+    const res  = await fetch('/api/notes', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({content:'', color:c, note_date: today})
+    });
+    if (res.ok) {
+      await loadDashNotes();
+      showToast('Catatan baru dibuat! 📝','success');
+    } else {
+      showToast('Gagal membuat catatan','error');
+    }
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+async function saveDashNote(id, content, color) {
+  try {
+    await fetch(`/api/notes/${id}`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({content, color})
+    });
+  } catch(e) {}
+}
+
+async function showNotesArchive() {
+  const bar = document.getElementById('notesArchiveBar');
+  if (!bar) return;
+  const isOpen = bar.style.display === 'flex';
+  bar.style.display = isOpen ? 'none' : 'flex';
+  if (!isOpen) {
+    // Set picker to today
+    const picker = document.getElementById('notesDatePicker');
+    if (picker) picker.value = _notesViewDate;
+
+    // Load archive dates to show which days have notes
+    try {
+      const r = await fetch('/api/notes/archive');
+      if (r.ok) {
+        const dates = await r.json();
+        const dotWrap = document.getElementById('notesArchiveDots');
+        if (dotWrap && dates.length) {
+          dotWrap.innerHTML = dates.slice(0, 10).map(d => {
+            const dt = new Date(d.note_date + 'T00:00:00');
+            const label = dt.toLocaleDateString('id-ID', {day:'numeric', month:'short'});
+            return '<button onclick="onNotesDateChange(\'' + d.note_date + '\')" ' +
+              'style="background:var(--indigo-glow);border:1px solid var(--indigo);border-radius:6px;' +
+              'padding:3px 8px;font-size:10px;cursor:pointer;color:var(--indigo);font-weight:600">' +
+              label + ' <span style="opacity:0.6;font-weight:400">(' + d.count + ')</span></button>';
+          }).join('');
+          dotWrap.style.display = 'flex';
+        } else if (dotWrap) {
+          dotWrap.style.display = 'none';
+        }
+      }
+    } catch(e) {}
+  }
+}
+
+function onNotesDateChange(val) {
+  if (!val) return;
+  loadDashNotes(val);
+}
+
+function closeNotesArchive() {
+  const bar = document.getElementById('notesArchiveBar');
+  if (bar) bar.style.display = 'none';
+  // Reset to today
+  _notesViewDate = new Date().toISOString().split('T')[0];
+  loadDashNotes(_notesViewDate);
+}
+
+// ── MOOD ──
+{% if mood %}
+document.addEventListener('DOMContentLoaded',()=>{
+  const _moodVal = {{ mood.mood | tojson }};
+  const existing = document.querySelector(`.mood-option[data-mood="${_moodVal}"]`);
+  if (existing) {
+    existing.style.borderColor='var(--indigo)';
+    existing.style.background='var(--indigo-glow)';
+  }
+  selectedMood={{ mood.mood | tojson }}; selectedLabel={{ mood.mood_label | tojson }};
+  const saveBtn = document.getElementById('saveMoodBtn');
+  if (saveBtn) saveBtn.disabled=false;
+});
+{% endif %}
+
+// ── ISQ MORNING CHECK ──
+fetch('/api/isq/today').then(r=>r.json()).then(d=>{
+  if (!d.morning) {
+    const banner = document.getElementById('isqPromptBanner');
+    if (banner) banner.style.display='flex';
+  }
+}).catch(()=>{});
+
+// ── SET TODAY DATE ──
+const tdEl = document.getElementById('taskDate');
+if (tdEl) tdEl.value = new Date().toISOString().split('T')[0];
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', () => {
+  buildContribGrid();
+  initAnimations();
+  loadDashNotes();
+  loadReminderWidget();
+  loadFinanceWidget();
+});
+
+// ── FINANCE WIDGET ──
+async function loadFinanceWidget() {
+  try {
+    const res  = await fetch('/api/savings');
+    if (!res.ok) return;
+    const data = await res.json();
+    const goals = data.goals || [];
+    if (!goals.length) return;
+
+    const widget = document.getElementById('financeWidget');
+    const content = document.getElementById('finWidgetContent');
+    if (!widget || !content) return;
+
+    widget.style.display = 'block';
+    let totalSaved = 0, totalTarget = 0;
+    goals.forEach(g => { totalSaved += g.saved_idr || 0; totalTarget += g.target_amount || 0; });
+    const pct = totalTarget > 0 ? Math.round(totalSaved / totalTarget * 100) : 0;
+
+    content.innerHTML =
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px">' +
+        '<span>Total terkumpul</span>' +
+        '<span style="font-weight:600;color:#10b981">Rp ' + Math.round(totalSaved).toLocaleString("id-ID") + '</span>' +
+      '</div>' +
+      '<div style="background:var(--bg-elevated);border-radius:4px;height:4px;margin-bottom:8px;overflow:hidden">' +
+        '<div style="height:4px;background:#10b981;border-radius:4px;width:' + pct + '%;transition:width 0.6s"></div>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between">' +
+        '<span>' + goals.length + ' goal tabungan aktif</span>' +
+        '<span style="color:#10b981">' + pct + '% total</span>' +
+      '</div>';
+  } catch(e) {}
+}
+
+// ── REMINDER WIDGET ──
+async function loadReminderWidget() {
+  const d = new Date();
+  const dateEl = document.getElementById('remWidgetDate');
+  if (dateEl) dateEl.textContent = d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});
+
+  try {
+    const res  = await fetch('/api/reminders/today');
+    if (!res.ok) { hideReminderWidget(); return; }
+    const data = await res.json();
+    const list = document.getElementById('remWidgetList');
+    const empty = document.getElementById('remWidgetEmpty');
+    const bar   = document.getElementById('remWidgetBar');
+
+    if (!data.reminders || !data.reminders.length) {
+      if (list)  list.style.display  = 'none';
+      if (empty) empty.style.display = 'block';
+      return;
+    }
+
+    // Progress bar
+    if (bar) bar.style.width = (data.pct || 0) + '%';
+
+    // Show max 4 reminders
+    const toShow = data.reminders.slice(0, 4);
+    if (list) {
+      list.innerHTML = toShow.map(r => {
+        const done  = r.done;
+        const color = r.color || '#6366f1';
+        const streak = r.current_streak || 0;
+        const tierEmoji = {
+          pemula:'🌱',konsisten:'🔥',momentum:'⚡',disiplin:'💎',
+          century:'🌊',master:'🔮',setahun:'👑',legend:'⚡',immortal:'🌟'
+        }[r.tier] || '';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">' +
+          '<div onclick="quickCheckReminder(' + r.id + ',this)" style="width:22px;height:22px;border-radius:50%;border:2px solid ' + color + ';cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:' + (done ? color : 'transparent') + ';transition:all 0.2s">' +
+          (done ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : '') +
+          '</div>' +
+          '<span style="font-size:15px">' + r.emoji + '</span>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:12px;font-weight:600;color:var(--text-primary);' + (done ? 'text-decoration:line-through;opacity:0.5' : '') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + r.title + '</div>' +
+            '<div style="font-size:10px;color:var(--text-muted)">' + (r.remind_time || '').slice(0,5) + (streak > 0 ? ' · ' + tierEmoji + ' ' + streak + ' hari' : '') + '</div>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+
+      // Remove border from last item
+      const items = list.querySelectorAll('div[style*="border-bottom"]');
+      if (items.length) items[items.length-1].style.borderBottom = 'none';
+    }
+
+    if (data.reminders.length > 4) {
+      const more = document.createElement('a');
+      more.href = '/reminders';
+      more.style.cssText = 'display:block;text-align:center;font-size:11px;color:var(--indigo);padding-top:8px;text-decoration:none';
+      more.textContent = '+' + (data.reminders.length - 4) + ' lainnya di halaman pengingat';
+      if (list) list.appendChild(more);
+    }
+  } catch(e) {
+    console.log('Reminder widget error:', e);
+    hideReminderWidget();
+  }
+}
+
+async function quickCheckReminder(id, el) {
+  try {
+    const done = el.style.background && el.style.background !== 'transparent';
+    const url  = done ? '/api/reminders/' + id + '/uncheck' : '/api/reminders/' + id + '/complete';
+    const res  = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    const data = await res.json();
+    if (data.milestone && data.milestone_msg) {
+      showToast(data.milestone_msg, 'success');
+    }
+    loadReminderWidget(); // refresh
+  } catch(e) {}
+}
+
+function hideReminderWidget() {
+  const w = document.getElementById('reminderWidget');
+  if (w) w.style.display = 'none';
+}
+</script>
+{% endblock %}

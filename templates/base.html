@@ -1,0 +1,2034 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="{{ session.get('theme','dark') }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0a0f" id="themeColorMeta">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <title>{% block title %}ActivityOS{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+  /* ═══════════════════════════════════════
+     DESIGN TOKENS — DARK (default)
+  ═══════════════════════════════════════ */
+  :root {
+    --bg-base:      #0a0a0f;
+    --bg-surface:   #111118;
+    --bg-elevated:  #18181f;
+    --bg-overlay:   #1e1e28;
+    --bg-hover:     #242433;
+    --border:       rgba(255,255,255,0.06);
+    --border-bright:rgba(255,255,255,0.12);
+    --text-primary: #f0f0f8;
+    --text-secondary:#8888aa;
+    --text-muted:   #4a4a6a;
+    --indigo:       #6366f1;
+    --indigo-glow:  rgba(99,102,241,0.25);
+    --emerald:      #10b981;
+    --amber:        #f59e0b;
+    --rose:         #f43f5e;
+    --cyan:         #06b6d4;
+    --sidebar-bg:   #0d0d14;
+    --sidebar-border:rgba(255,255,255,0.06);
+    --radius-sm:8px; --radius-md:14px; --radius-lg:20px; --radius-xl:28px;
+    --ease:cubic-bezier(0.16,1,0.3,1);
+    --ease-out:cubic-bezier(0.22,1,0.36,1);
+  }
+
+  /* ═══════════════════════════════════════
+     LIGHT MODE — Jira-style Enterprise Blue
+  ═══════════════════════════════════════ */
+  [data-theme="light"] {
+    --bg-base:      #f0f4ff;
+    --bg-surface:   #ffffff;
+    --bg-elevated:  #f8faff;
+    --bg-overlay:   #eef2fd;
+    --bg-hover:     #e4ecff;
+    --border:       rgba(37,99,235,0.10);
+    --border-bright:rgba(37,99,235,0.22);
+    --text-primary: #0f1730;
+    --text-secondary:#4a5580;
+    --text-muted:   #8898bb;
+    --indigo:       #2563eb;
+    --indigo-glow:  rgba(37,99,235,0.18);
+    --emerald:      #059669;
+    --amber:        #d97706;
+    --rose:         #dc2626;
+    --cyan:         #0891b2;
+    --sidebar-bg:   #1e3a8a;
+    --sidebar-border:rgba(255,255,255,0.10);
+  }
+
+  [data-theme="light"] .sidebar { background: var(--sidebar-bg) !important; }
+  [data-theme="light"] .sidebar .nav-link { color: rgba(255,255,255,0.65); }
+  [data-theme="light"] .sidebar .nav-link:hover,
+  [data-theme="light"] .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,0.12); }
+  [data-theme="light"] .sidebar .nav-link.active::before { background: linear-gradient(90deg,rgba(255,255,255,0.1),transparent); }
+  [data-theme="light"] .sidebar .nav-link.active .nav-icon { color: #93c5fd; }
+  [data-theme="light"] .sidebar .nav-section-label { color: rgba(255,255,255,0.35); }
+  [data-theme="light"] .sidebar .logo-sub { color: #93c5fd; }
+  [data-theme="light"] .sidebar .logo-text { color: #fff; }
+  [data-theme="light"] .sidebar .user-name { color: #fff; }
+  [data-theme="light"] .sidebar .user-role { color: rgba(255,255,255,0.5); }
+  [data-theme="light"] .sidebar .nav-badge { background: rgba(255,255,255,0.2); }
+  [data-theme="light"] .topbar { background: rgba(240,244,255,0.85); border-color: var(--border); }
+  [data-theme="light"] body::after { background-image: linear-gradient(rgba(37,99,235,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,0.04) 1px,transparent 1px); }
+  [data-theme="light"] .card-glow { opacity: 0.08; }
+
+  *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+  html { scroll-behavior:smooth; -webkit-tap-highlight-color:transparent; }
+
+  body {
+    font-family:'Outfit',sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    line-height:1.6;
+    min-height:100vh;
+    overflow-x:hidden;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  body::before {
+    content:''; position:fixed; inset:0; z-index:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    opacity:0.35; pointer-events:none;
+  }
+  body::after {
+    content:''; position:fixed; inset:0; z-index:0;
+    background-image:linear-gradient(rgba(99,102,241,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.03) 1px,transparent 1px);
+    background-size:48px 48px; pointer-events:none;
+  }
+
+  /* ── PAGE TRANSITION ── */
+  .page-transition { animation: pageIn 0.35s var(--ease) both; }
+  @keyframes pageIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ── LAYOUT ── */
+  .app-layout { display:flex; min-height:100vh; position:relative; z-index:1; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width:240px; background:var(--sidebar-bg);
+    border-right:1px solid var(--sidebar-border);
+    display:flex; flex-direction:column;
+    position:fixed; top:0; left:0; bottom:0;
+    z-index:100; transition:transform 0.3s var(--ease);
+    backdrop-filter:blur(20px);
+  }
+  .sidebar-logo { padding:24px 20px 20px; border-bottom:1px solid var(--sidebar-border); }
+  .logo-mark { display:flex; align-items:center; gap:10px; }
+  .logo-icon {
+    width:36px; height:36px;
+    background:linear-gradient(135deg,var(--indigo),var(--cyan));
+    border-radius:10px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 0 20px var(--indigo-glow);
+    flex-shrink:0;
+  }
+  .logo-text { font-size:16px; font-weight:800; letter-spacing:-0.5px; color:var(--text-primary); }
+  .logo-sub { font-family:'Space Mono',monospace; font-size:9px; color:var(--indigo); letter-spacing:2px; text-transform:uppercase; margin-top:1px; }
+  .sidebar-nav { flex:1; padding:16px 12px; display:flex; flex-direction:column; gap:4px; overflow-y:auto; }
+  .nav-section-label { font-size:10px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); padding:12px 8px 6px; }
+  .nav-link {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 12px; border-radius:var(--radius-sm);
+    color:var(--text-secondary); text-decoration:none;
+    font-size:14px; font-weight:500;
+    transition:all 0.2s var(--ease); position:relative; overflow:hidden;
+  }
+  .nav-link::before { content:''; position:absolute; inset:0; background:linear-gradient(90deg,var(--indigo-glow),transparent); opacity:0; transition:opacity 0.2s; }
+  .nav-link:hover { color:var(--text-primary); background:var(--bg-hover); }
+  .nav-link.active { color:var(--text-primary); background:var(--bg-overlay); }
+  .nav-link.active::before { opacity:1; }
+  .nav-link.active .nav-icon { color:var(--indigo); }
+  .nav-icon { width:16px; height:16px; flex-shrink:0; }
+  .nav-badge { margin-left:auto; background:var(--indigo); color:white; font-size:10px; font-weight:700; padding:1px 6px; border-radius:100px; font-family:'Space Mono',monospace; }
+
+  /* ── SIDEBAR USER ── */
+  .sidebar-user { padding:16px; border-top:1px solid var(--sidebar-border); }
+  .user-card { display:flex; align-items:center; gap:10px; padding:10px; border-radius:var(--radius-sm); cursor:pointer; transition:background 0.2s; text-decoration:none; }
+  .user-card:hover { background:var(--bg-hover); }
+
+  /* ── AVATAR ── */
+  .avatar {
+    width:32px; height:32px; border-radius:50%;
+    background:linear-gradient(135deg,var(--indigo),var(--cyan));
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:12px; flex-shrink:0;
+    overflow:hidden; border:2px solid rgba(255,255,255,0.1);
+  }
+  .avatar img { width:100%; height:100%; object-fit:cover; }
+  .avatar-lg { width:52px; height:52px; font-size:18px; }
+
+  .user-info { flex:1; min-width:0; }
+  .user-name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-primary); }
+  .user-role { font-size:11px; color:var(--text-muted); font-family:'Space Mono',monospace; }
+
+  /* ── MAIN ── */
+  .main-content { flex:1; margin-left:240px; min-height:100vh; display:flex; flex-direction:column; }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    position:sticky; top:0; z-index:90;
+    background:rgba(10,10,15,0.85); backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border);
+    padding:0 24px; height:60px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    transition:background 0.3s;
+  }
+  .topbar-title { font-size:16px; font-weight:700; color:var(--text-primary);; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px; }
+  .topbar-meta { font-size:12px; color:var(--text-muted); font-family:'Space Mono',monospace; }
+  .topbar-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .btn-icon {
+    width:36px; height:36px; border-radius:var(--radius-sm);
+    background:var(--bg-elevated); border:1px solid var(--border);
+    color:var(--text-secondary); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:all 0.2s;
+  }
+  .btn-icon:hover { background:var(--bg-hover); color:var(--text-primary); border-color:var(--border-bright); }
+  .mobile-menu-btn { display:none; }
+
+  /* ── LIVE CLOCK ── */
+  .live-clock {
+    font-family:'Space Mono',monospace;
+    font-size:12px; color:var(--text-muted);
+    display:flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:100px;
+    background:var(--bg-elevated); border:1px solid var(--border);
+  }
+  .live-clock-dot {
+    width:6px; height:6px; border-radius:50%; background:var(--emerald);
+    box-shadow:0 0 6px rgba(16,185,129,0.6);
+    animation:pulse-dot 2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+
+  /* ── THEME TOGGLE ── */
+  .theme-toggle {
+    width:36px; height:36px; border-radius:var(--radius-sm);
+    background:var(--bg-elevated); border:1px solid var(--border);
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:all 0.3s var(--ease); color:var(--text-secondary);
+    position:relative; overflow:hidden;
+  }
+  .theme-toggle:hover { background:var(--bg-hover); color:var(--amber); border-color:var(--border-bright); }
+  .theme-toggle .sun, .theme-toggle .moon { position:absolute; transition:all 0.3s var(--ease); }
+  [data-theme="dark"]  .theme-toggle .sun  { opacity:1; transform:rotate(0deg) scale(1); }
+  [data-theme="dark"]  .theme-toggle .moon { opacity:0; transform:rotate(90deg) scale(0); }
+  [data-theme="light"] .theme-toggle .sun  { opacity:0; transform:rotate(-90deg) scale(0); }
+  [data-theme="light"] .theme-toggle .moon { opacity:1; transform:rotate(0deg) scale(1); }
+
+  /* ── PAGE CONTENT ── */
+  .page-content { flex:1; padding:24px; }
+
+  /* ── CARDS ── */
+  .card {
+    background:var(--bg-surface); border:1px solid var(--border);
+    border-radius:var(--radius-lg); padding:20px;
+    position:relative; overflow:hidden;
+    transition:border-color 0.2s, box-shadow 0.2s;
+  }
+  .card:hover { border-color:var(--border-bright); }
+  .card-glow { position:absolute; top:-40px; right:-40px; width:120px; height:120px; border-radius:50%; opacity:0.15; filter:blur(40px); pointer-events:none; }
+  .card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .card-title { font-size:13px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; }
+
+  /* ── STAT ── */
+  .stat-number { font-family:'Space Mono',monospace; font-size:36px; font-weight:700; line-height:1; color:var(--text-primary); }
+  .stat-sub { font-size:12px; color:var(--text-muted); margin-top:4px; }
+
+  /* ── PROGRESS ── */
+  .progress-track { height:4px; background:var(--bg-overlay); border-radius:100px; overflow:hidden; }
+  .progress-fill {
+    height:100%; border-radius:100px;
+    background:linear-gradient(90deg,var(--indigo),var(--cyan));
+    transition:width 0.8s var(--ease-out); position:relative;
+  }
+  .progress-fill::after { content:''; position:absolute; right:0; top:0; width:8px; height:100%; background:rgba(255,255,255,0.6); filter:blur(4px); }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:10px 18px; border-radius:var(--radius-sm);
+    font-size:13px; font-weight:600; cursor:pointer; border:none;
+    text-decoration:none; transition:all 0.2s var(--ease);
+    font-family:'Outfit',sans-serif;
+  }
+  .btn-primary { background:var(--indigo); color:white; box-shadow:0 0 20px var(--indigo-glow); }
+  .btn-primary:hover { background:#7578f3; transform:translateY(-1px); box-shadow:0 4px 24px var(--indigo-glow); }
+  .btn-ghost { background:transparent; color:var(--text-secondary); border:1px solid var(--border); }
+  .btn-ghost:hover { background:var(--bg-hover); color:var(--text-primary); border-color:var(--border-bright); }
+  .btn-danger { background:rgba(244,63,94,0.1); color:var(--rose); border:1px solid rgba(244,63,94,0.2); }
+  .btn-danger:hover { background:rgba(244,63,94,0.2); }
+
+  /* ── BADGE ── */
+  .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:100px; font-size:11px; font-weight:600; }
+  .badge-indigo  { background:rgba(99,102,241,0.15);  color:var(--indigo);  }
+  .badge-emerald { background:rgba(16,185,129,0.15); color:var(--emerald); }
+  .badge-amber   { background:rgba(245,158,11,0.15);  color:var(--amber);   }
+  .badge-rose    { background:rgba(244,63,94,0.15);   color:var(--rose);    }
+  .badge-cyan    { background:rgba(6,182,212,0.15);   color:var(--cyan);    }
+  [data-theme="light"] .badge-indigo  { background:rgba(37,99,235,0.10); }
+
+  /* ── PRIORITY ── */
+  .priority-urgent { border-left:3px solid var(--rose); }
+  .priority-high   { border-left:3px solid var(--amber); }
+  .priority-medium { border-left:3px solid var(--indigo); }
+  .priority-low    { border-left:3px solid var(--text-muted); }
+
+  /* ── FORMS ── */
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-label { font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; }
+  .form-input, .form-select, .form-textarea {
+    background:var(--bg-elevated); border:1.5px solid var(--border);
+    border-radius:10px; padding:11px 14px;
+    color:var(--text-primary); font-family:'Outfit',sans-serif; font-size:14px;
+    outline:none; transition:border-color 0.2s, box-shadow 0.2s;
+    width:100%; box-sizing:border-box;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color:var(--indigo); box-shadow:0 0 0 3px var(--indigo-glow);
+  }
+  .form-input::placeholder, .form-textarea::placeholder { color:var(--text-muted); }
+  .form-select { cursor:pointer; }
+  .form-input:focus,.form-select:focus,.form-textarea:focus { border-color:var(--indigo); box-shadow:0 0 0 3px var(--indigo-glow); }
+  .form-select option { background:var(--bg-elevated); color:var(--text-primary); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.72); backdrop-filter:blur(8px);
+    z-index:500; display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none;
+    visibility:hidden;
+    transition:opacity 0.25s var(--ease), visibility 0s linear 0.25s;
+    padding:16px; box-sizing:border-box;
+  }
+  .modal-overlay.open {
+    opacity:1; pointer-events:all;
+    visibility:visible;
+    transition:opacity 0.25s var(--ease), visibility 0s linear 0s;
+  }
+  .modal {
+    background:var(--bg-surface); border:1.5px solid var(--border-bright);
+    border-radius:20px;
+    width:100%; max-width:520px; padding:24px;
+    transform:translateY(20px) scale(0.97);
+    transition:transform 0.3s var(--ease), opacity 0.25s var(--ease);
+    max-height:88vh; overflow-y:auto;
+    opacity:0;
+    position:relative; z-index:1;
+    will-change:transform, opacity;
+    pointer-events:none;
+  }
+  .modal-overlay.open .modal {
+    transform:translateY(0) scale(1);
+    opacity:1;
+    pointer-events:all;
+  }
+  @media(max-width:540px) {
+    /* Overlay: position at bottom, full width */
+    .modal-overlay {
+      align-items:flex-end !important;
+      padding:0 !important;
+    }
+    /* Modal card: bottom-sheet style */
+    .modal {
+      border-radius:20px 20px 0 0 !important;
+      width:100% !important;
+      max-width:100% !important;
+      max-height:92vh !important;
+      padding:20px 16px !important;
+      padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 16px) !important;
+      background:var(--bg-surface) !important;
+      color:var(--text-primary) !important;
+      opacity:1 !important;
+      transform:translateY(100%) !important;
+      pointer-events:all !important;
+    }
+    /* Overlay open state (JS also controls this) */
+    .modal-overlay.open .modal {
+      transform:translateY(0) !important;
+    }
+    /* Handle bar at top */
+    .modal-handle {
+      display:block !important;
+      width:40px; height:4px;
+      background:var(--bg-overlay);
+      border-radius:100px;
+      margin:0 auto 16px;
+    }
+    /* iOS input zoom prevention */
+    .form-input, .form-select, .form-textarea,
+    .mf-input, .mf-select, input[type="text"],
+    input[type="number"], input[type="date"],
+    input[type="password"], select, textarea {
+      font-size:16px !important;
+    }
+  }
+  .modal-handle { width:40px; height:4px; background:var(--bg-overlay); border-radius:100px; margin:0 auto 20px; }
+  .modal-title { font-size:18px; font-weight:700; margin-bottom:20px; }
+
+  /* ── COMMAND PALETTE ── */
+  .cmd-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(12px);
+    z-index:500; display:flex; align-items:flex-start; justify-content:center;
+    padding-top:80px; opacity:0; pointer-events:none;
+    transition:opacity 0.2s;
+  }
+  .cmd-overlay.open { opacity:1; pointer-events:all; }
+  .cmd-box {
+    background:var(--bg-surface); border:1px solid var(--border-bright);
+    border-radius:var(--radius-xl); width:100%; max-width:580px;
+    box-shadow:0 24px 80px rgba(0,0,0,0.6);
+    transform:scale(0.96) translateY(-8px);
+    transition:transform 0.25s var(--ease);
+    overflow:hidden;
+    max-height:calc(100vh - 100px);
+    display:flex; flex-direction:column;
+  }
+  .cmd-overlay.open .cmd-box { transform:scale(1) translateY(0); }
+  .cmd-search-row {
+    display:flex; align-items:center; gap:12px;
+    padding:16px 20px; border-bottom:1px solid var(--border);
+  }
+  .cmd-search-row input {
+    flex:1; background:transparent; border:none; outline:none;
+    font-size:16px; color:var(--text-primary); font-family:'Outfit',sans-serif;
+  }
+  .cmd-search-row input::placeholder { color:var(--text-muted); }
+  .cmd-results { flex:1; overflow-y:auto; padding:8px; min-height:0; }
+  .cmd-section-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); padding:8px 12px 4px; }
+  .cmd-item {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer;
+    transition:background 0.15s; text-decoration:none; color:var(--text-primary);
+  }
+  .cmd-item:hover, .cmd-item.active { background:var(--bg-hover); }
+  .cmd-item-icon { width:30px; height:30px; border-radius:8px; background:var(--bg-overlay); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .cmd-item-text { flex:1; font-size:13px; font-weight:500; }
+  .cmd-item-sub { font-size:11px; color:var(--text-muted); }
+  .cmd-item-kbd { font-family:'Space Mono',monospace; font-size:10px; background:var(--bg-overlay); border:1px solid var(--border-bright); border-radius:4px; padding:2px 6px; color:var(--text-muted); }
+  .cmd-empty { text-align:center; padding:32px; color:var(--text-muted); font-size:13px; }
+  .cmd-footer { padding:10px 20px; border-top:1px solid var(--border); display:flex; gap:16px; }
+  .cmd-hint { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); }
+  .cmd-hint kbd { font-family:'Space Mono',monospace; background:var(--bg-overlay); border:1px solid var(--border); border-radius:4px; padding:1px 5px; }
+
+  /* ── TOAST ── */
+  .toast-container { position:fixed; bottom:24px; right:24px; z-index:1000; display:flex; flex-direction:column; gap:8px; }
+  .toast {
+    background:var(--bg-elevated); border:1px solid var(--border-bright);
+    border-radius:var(--radius-md); padding:12px 16px; font-size:13px;
+    color:var(--text-primary); display:flex; align-items:center; gap:10px;
+    min-width:220px; box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    animation:slideIn 0.3s var(--ease);
+  }
+  .toast.success { border-left:3px solid var(--emerald); }
+  .toast.error   { border-left:3px solid var(--rose); }
+  @keyframes slideIn { from{transform:translateX(120%);opacity:0} to{transform:translateX(0);opacity:1} }
+  @keyframes slideOut { from{transform:translateX(0);opacity:1} to{transform:translateX(120%);opacity:0} }
+
+  /* ── CONFETTI ── */
+  .confetti-piece {
+    position:fixed; width:10px; height:10px; z-index:9999;
+    border-radius:2px; pointer-events:none;
+    animation:confettiFall var(--dur,3s) var(--delay,0s) ease-in forwards;
+  }
+  @keyframes confettiFall {
+    0%   { transform:translateY(-20px) rotate(0deg); opacity:1; }
+    100% { transform:translateY(110vh) rotate(720deg); opacity:0; }
+  }
+
+  /* ── SKELETON ── */
+  .skeleton {
+    background:linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-hover) 50%, var(--bg-elevated) 75%);
+    background-size:200% 100%;
+    animation:shimmer 1.5s infinite;
+    border-radius:var(--radius-sm);
+  }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* ── POMODORO TIMER ── */
+  .pomo-wrap {
+    display:none; align-items:center; gap:8px;
+    background:var(--bg-overlay); border-radius:100px;
+    padding:4px 10px; border:1px solid var(--border);
+    font-family:'Space Mono',monospace; font-size:12px;
+  }
+  .pomo-wrap.active { display:inline-flex; }
+  .pomo-time { color:var(--rose); font-weight:700; min-width:40px; }
+  .pomo-btn {
+    width:22px; height:22px; border-radius:50%; border:none;
+    background:var(--indigo); color:white; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:all 0.2s;
+  }
+  .pomo-btn:hover { background:#7578f3; }
+
+  /* ── FLASH ── */
+  .flash { padding:12px 16px; border-radius:var(--radius-sm); font-size:13px; margin-bottom:16px; }
+  .flash.error { background:rgba(244,63,94,0.1); color:var(--rose); border:1px solid rgba(244,63,94,0.2); }
+
+  /* ── MISC ── */
+  ::-webkit-scrollbar { width:4px; height:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--bg-overlay); border-radius:4px; }
+  .divider { height:1px; background:var(--border); margin:16px 0; }
+  .chip { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:var(--radius-sm); font-size:11px; background:var(--bg-overlay); color:var(--text-secondary); border:1px solid var(--border); }
+  .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:48px 24px; text-align:center; color:var(--text-muted); gap:12px; }
+  .empty-state svg { opacity:0.3; }
+  .empty-state p { font-size:14px; }
+
+  /* ── BOTTOM NAV (Mobile) ── */
+  .bottom-nav {
+    display:none;
+    position:fixed; bottom:0; left:0; right:0; z-index:350;
+    background:var(--bg-surface);
+    border-top:1px solid var(--border);
+    padding:0 8px env(safe-area-inset-bottom);
+    backdrop-filter:blur(20px);
+    overflow:visible;
+  }
+  .bottom-nav-inner {
+    display:flex; align-items:center; justify-content:space-around;
+    max-width:500px; margin:0 auto;
+    position:relative; overflow:visible;
+  }
+  .bn-item {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px; padding:8px 4px; flex:1; cursor:pointer; border:none;
+    background:transparent; color:var(--text-muted);
+    font-family:'Outfit',sans-serif; font-size:10px; font-weight:600;
+    text-decoration:none; transition:color 0.2s;
+    position:relative; min-height:52px;
+    -webkit-tap-highlight-color:transparent;
+    /* Bigger hit area on mobile */
+    touch-action:manipulation;
+  }
+  .bn-item.active { color:var(--indigo); }
+  .bn-item.active svg { filter:drop-shadow(0 0 6px var(--indigo)); }
+  .bn-item svg { width:22px; height:22px; transition:transform 0.2s; }
+  .bn-item.active svg { transform:translateY(-2px); }
+
+  /* CENTER FAB BUTTON */
+    @keyframes fabPulse {
+    0%,100%{box-shadow:0 4px 20px var(--indigo-glow)}
+    50%{box-shadow:0 4px 32px rgba(99,102,241,0.6)}
+  }
+  /* FAB radial menu */
+
+
+  /* ── MOOD FAB (mobile only) ── */
+  @media (max-width:768px) {
+    #moodFabWrap { display:block !important; }
+  }
+  #moodFab:hover, #moodFab:active { transform:scale(1.12); }
+
+  /* ── HOME CENTER BUTTON ── */
+  .bn-home-center {
+    width:58px; height:58px; border-radius:50%;
+    background:linear-gradient(135deg, var(--indigo), var(--cyan));
+    border:3px solid var(--bg-base);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px; cursor:pointer; text-decoration:none;
+    box-shadow:0 4px 20px var(--indigo-glow);
+    position:absolute; top:-22px; left:50%; transform:translateX(-50%);
+    transition:all 0.3s var(--ease); z-index:370;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .bn-home-center:hover  { transform:translateX(-50%) scale(1.08) translateY(-2px); }
+  .bn-home-center:active { transform:translateX(-50%) scale(0.94); }
+  .bn-home-center.is-active {
+    background:linear-gradient(135deg, var(--indigo), var(--cyan));
+    box-shadow:0 4px 28px rgba(99,102,241,0.6);
+  }
+  .bn-home-label {
+    font-size:9px; font-weight:700; color:rgba(255,255,255,0.85);
+    font-family:'Outfit',sans-serif; line-height:1;
+  }
+
+  @media (max-width:768px) {
+    .bottom-nav { display:block; }
+    .main-content { padding-bottom:80px !important; }
+  }
+
+  /* ── APEX SPARK ANIMATION ── */
+  .apex-spark-container {
+    position:fixed; inset:0; pointer-events:none; z-index:9999;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .apex-spark { position:absolute; opacity:0; }
+  @keyframes sparkFly {
+    0%   { transform:translate(0,0) scale(1); opacity:1; }
+    100% { transform:translate(var(--tx),var(--ty)) scale(0); opacity:0; }
+  }
+  @keyframes logoFlash {
+    0%,100% { filter:none; }
+    50% { filter:drop-shadow(0 0 12px #6366f1) drop-shadow(0 0 24px #a5b4fc); }
+  }
+
+  /* ── RESPONSIVE FIXES ── */
+  @media (max-width:480px) {
+    .card  { padding:14px; }
+    .topbar { padding:0 10px !important; height:54px !important; }
+    .page-header { padding:14px 12px 0; }
+  }
+
+  /* ── ONBOARDING WIZARD ── */
+  .onboard-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(12px);
+    z-index:600; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .onboard-box {
+    background:var(--bg-surface); border:1px solid var(--border-bright);
+    border-radius:var(--radius-xl); width:100%; max-width:480px;
+    padding:36px; position:relative;
+    animation:fadeUp 0.5s var(--ease) both;
+  }
+  .onboard-step { display:none; }
+  .onboard-step.active { display:block; }
+  .onboard-icon { font-size:52px; text-align:center; margin-bottom:16px; }
+  .onboard-title { font-size:22px; font-weight:800; text-align:center; margin-bottom:8px; }
+  .onboard-desc { font-size:14px; color:var(--text-secondary); text-align:center; margin-bottom:24px; line-height:1.7; }
+  .onboard-dots { display:flex; justify-content:center; gap:6px; margin-bottom:24px; }
+  .onboard-dot { width:8px; height:8px; border-radius:50%; background:var(--bg-overlay); transition:all 0.3s; }
+  .onboard-dot.active { background:var(--indigo); width:24px; border-radius:4px; }
+
+  /* ── PWA INSTALL BANNER ── */
+  .pwa-banner {
+    position:fixed; bottom:0; left:0; right:0; z-index:400;
+    background:var(--bg-surface); border-top:1px solid var(--border-bright);
+    padding:14px 20px; display:flex; align-items:center; gap:14px;
+    transform:translateY(100%); transition:transform 0.4s var(--ease);
+    box-shadow:0 -8px 32px rgba(0,0,0,0.3);
+  }
+  .pwa-banner.show { transform:translateY(0); }
+  .pwa-banner-icon { width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,var(--indigo),var(--cyan)); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .pwa-banner-text { flex:1; }
+  .pwa-banner-title { font-size:13px; font-weight:700; }
+  .pwa-banner-sub   { font-size:11px; color:var(--text-muted); }
+
+  /* ── PUSH NOTIF PROMPT ── */
+  .notif-prompt {
+    position:fixed; top:80px; right:20px; z-index:300;
+    background:var(--bg-surface); border:1px solid var(--border-bright);
+    border-radius:var(--radius-lg); padding:16px 18px;
+    max-width:300px; box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    transform:translateX(120%); transition:transform 0.4s var(--ease);
+  }
+  .notif-prompt.show { transform:translateX(0); }
+  .notif-prompt-title { font-size:13px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+  .notif-prompt-sub   { font-size:12px; color:var(--text-secondary); margin-bottom:12px; }
+
+  /* ── QUICK NOTES ── */
+  .notes-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; }
+  .note-card {
+    border-radius:var(--radius-md); padding:14px; min-height:100px;
+    position:relative; cursor:pointer; transition:all 0.2s;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  .note-card:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,0.3); }
+  .note-card textarea {
+    background:transparent; border:none; outline:none; resize:none;
+    width:100%; font-family:'Outfit',sans-serif; font-size:13px;
+    color:inherit; line-height:1.5; min-height:60px;
+  }
+  .note-del { position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.2); border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; display:none; align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-size:11px; }
+  .note-card:hover .note-del { display:flex; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes dropIn { from{opacity:0;transform:translateY(-8px) scale(.97)} to{opacity:1;transform:none} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  @keyframes pulse-glow { 0%,100%{box-shadow:0 0 8px var(--indigo-glow)} 50%{box-shadow:0 0 24px var(--indigo-glow),0 0 48px var(--indigo-glow)} }
+  .animate-fade-up { animation:fadeUp 0.5s var(--ease) both; }
+  .delay-1{animation-delay:0.1s} .delay-2{animation-delay:0.2s} .delay-3{animation-delay:0.3s} .delay-4{animation-delay:0.4s}
+
+  /* ── CMD PALETTE MOBILE ── */
+  @media (max-width:640px) {
+    .cmd-overlay { padding:12px 12px 0; align-items:flex-start; }
+    .cmd-box {
+      border-radius:var(--radius-lg);
+      max-height:calc(100dvh - 80px);
+    }
+    .cmd-footer { display:none; }
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width:768px) {
+    /* Sidebar hidden on mobile */
+    .sidebar { display:none !important; }
+    .sidebar-overlay { display:none !important; }
+    .mobile-menu-btn { display:none !important; }
+    /* Full width, no horizontal scroll */
+    .main-content { margin-left:0 !important; width:100% !important; overflow-x:hidden !important; }
+    .app-layout { overflow-x:hidden !important; max-width:100vw !important; }
+    .page-content { padding:14px !important; overflow-x:hidden !important; box-sizing:border-box !important; }
+    .topbar { left:0 !important; padding:0 12px !important; }
+    .topbar-title { font-size:15px !important; }
+    .stat-number { font-size:28px; }
+    .live-clock { display:none; }
+    .toast-container { bottom:90px; right:12px; left:12px; }
+    .toast { min-width:unset; width:100%; box-sizing:border-box; }
+    /* Cards responsive */
+    .card { padding:14px !important; }
+    /* Grid fallback */
+    .grid-2, .grid-3, .grid-4 { grid-template-columns:1fr !important; }
+    /* Buttons in topbar smaller */
+    .btn { font-size:12px !important; padding:7px 12px !important; }
+    .btn-icon { width:34px !important; height:34px !important; }
+  }
+
+  /* ── SMALL PHONES (360-480px) ── */
+  @media (max-width:480px) {
+    .page-content { padding:10px !important; }
+    .topbar { padding:0 10px !important; height:54px !important; }
+    .topbar-title { font-size:14px !important; max-width:140px !important; }
+    .topbar-meta { display:none; }
+    .stat-number { font-size:24px; }
+    /* Hide less important topbar items */
+    .live-clock { display:none !important; }
+  }
+
+  /* ── TABLET (768-1024px) ── */
+  @media (min-width:769px) and (max-width:1024px) {
+    .sidebar { width:200px; }
+    .main-content { margin-left:200px; }
+    .page-content { padding:16px; }
+  }
+  .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; }
+  @media (max-width:768px) { .sidebar-overlay.active { display:block; } }
+  /* ── PROFILE TABS ── */
+  .profile-tab {
+    flex:1; padding:7px 10px; border:none; border-radius:8px; cursor:pointer;
+    font-family:'Outfit',sans-serif; font-size:12px; font-weight:600;
+    background:transparent; color:var(--text-secondary); transition:all 0.2s;
+  }
+  .profile-tab.active { background:var(--bg-surface); color:var(--text-primary); box-shadow:0 1px 4px rgba(0,0,0,0.3); }
+  .profile-tab:hover:not(.active) { color:var(--text-primary); }
+
+  /* ══ MORE DRAWER ══ */
+  .more-drawer-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px);
+    z-index:450; opacity:0; pointer-events:none; transition:opacity 0.25s;
+  }
+  .more-drawer-overlay.open { opacity:1; pointer-events:all; }
+  .more-drawer {
+    position:fixed; bottom:0; left:0; right:0; z-index:460;
+    background:var(--bg-surface); border-radius:24px 24px 0 0;
+    border-top:1.5px solid var(--border-bright);
+    padding:0 16px 32px; transform:translateY(100%);
+    transition:transform 0.35s var(--ease);
+    max-height:80vh; overflow-y:auto;
+  }
+  .more-drawer.open { transform:translateY(0); }
+  .more-drawer-handle {
+    width:40px; height:4px; background:var(--bg-overlay);
+    border-radius:100px; margin:12px auto 16px; display:block;
+  }
+  .more-drawer-title {
+    font-size:11px; font-weight:700; text-transform:uppercase;
+    letter-spacing:1.5px; color:var(--text-muted); margin-bottom:14px;
+    padding-left:4px;
+  }
+  .more-grid {
+    display:grid; grid-template-columns:repeat(3,1fr); gap:10px;
+    margin-bottom:16px;
+  }
+  .more-grid-item {
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    padding:14px 8px; border-radius:16px;
+    background:var(--bg-elevated); border:1.5px solid var(--border);
+    cursor:pointer; transition:all 0.18s; text-decoration:none;
+    font-family:'Outfit',sans-serif;
+  }
+  .more-grid-item:hover, .more-grid-item:active {
+    border-color:var(--indigo); background:var(--indigo-glow);
+    transform:translateY(-2px);
+  }
+  .more-grid-icon {
+    width:44px; height:44px; border-radius:14px;
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+  }
+  .more-grid-label { font-size:11px; font-weight:700; color:var(--text-secondary); text-align:center; }
+  .more-divider { height:1px; background:var(--border); margin:8px 0 16px; }
+  .more-bottom-row { display:flex; gap:10px; }
+  .more-bottom-btn {
+    flex:1; padding:12px; border-radius:14px; border:1.5px solid var(--border);
+    background:var(--bg-elevated); cursor:pointer; display:flex;
+    align-items:center; justify-content:center; gap:8px;
+    font-family:'Outfit',sans-serif; font-size:13px; font-weight:700;
+    color:var(--text-secondary); transition:all 0.18s; text-decoration:none;
+  }
+  .more-bottom-btn:hover { border-color:var(--indigo); background:var(--indigo-glow); }
+  .more-bottom-btn.danger { color:var(--rose); }
+  .more-bottom-btn.danger:hover { border-color:var(--rose); background:rgba(244,63,94,.08); }
+
+  /* ══ MOOD MODAL GLOBAL ══ */
+  .mood-pill {
+    padding:10px 14px; border-radius:14px; border:2px solid var(--border);
+    background:var(--bg-elevated); cursor:pointer; text-align:center;
+    transition:all 0.15s; display:flex; flex-direction:column; gap:4px;
+  }
+  .mood-pill:hover { border-color:var(--indigo); transform:translateY(-2px); }
+  .mood-pill.selected { border-color:var(--indigo); background:var(--indigo-glow); }
+  .mood-pill span:first-child { font-size:30px; display:block; }
+  .mood-pill span:last-child { font-size:10px; font-weight:700; color:var(--text-muted); }
+
+  /* FAB removed — replaced by direct nav */
+
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body style="overflow-x:hidden;max-width:100vw">
+<div class="app-layout">
+
+{% if session.get('user_id') %}
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <div class="logo-icon" id="apexLogoMark" style="overflow:hidden;position:relative">
+        <img id="sidebarLogoImg" alt="" style="display:none;width:100%;height:100%;object-fit:contain;position:absolute;inset:0;">
+        <svg id="sidebarLogoSvg" width="20" height="20" viewBox="0 0 100 100" fill="none">
+          <line x1="22" y1="72" x2="72" y2="22" stroke="white" stroke-width="8" stroke-linecap="round"/>
+          <polyline points="48,22 72,22 72,46" stroke="white" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M18,62 Q30,80 44,66 Q58,52 68,70" stroke="rgba(255,255,255,0.6)" stroke-width="6" fill="none" stroke-linecap="round"/>
+          <circle cx="50" cy="50" r="5" fill="#a5b4fc"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">ActivityOS</div>
+        <div class="logo-sub">Enterprise v2.0</div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Main</div>
+    <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}">
+      <i data-lucide="layout-dashboard" class="nav-icon"></i> Dashboard
+    </a>
+    <a href="{{ url_for('tasks_page') }}" class="nav-link {% if request.endpoint=='tasks_page' %}active{% endif %}">
+      <i data-lucide="check-square" class="nav-icon"></i> Tasks
+    </a>
+    <a href="{{ url_for('reminders_page') }}" class="nav-link {% if request.endpoint=='reminders_page' %}active{% endif %}">
+      <i data-lucide="bell" class="nav-icon"></i> Pengingat
+    </a>
+    <a href="{{ url_for('finance_page') }}" class="nav-link {% if request.endpoint=='finance_page' %}active{% endif %}">
+      <i data-lucide="trending-up" class="nav-icon"></i> Finansial
+    </a>
+    <a href="{{ url_for('roadmap') }}" class="nav-link {% if request.endpoint=='roadmap' %}active{% endif %}">
+      <i data-lucide="map" class="nav-icon"></i> Roadmap
+    </a>
+    <a href="{{ url_for('analytics') }}" class="nav-link {% if request.endpoint=='analytics' %}active{% endif %}">
+      <i data-lucide="bar-chart-2" class="nav-icon"></i> Analytics
+    </a>
+    <a href="{{ url_for('isq_page') }}" class="nav-link {% if request.endpoint=='isq_page' %}active{% endif %}" style="border:1px solid rgba(212,175,55,0.2);background:rgba(212,175,55,0.05)">
+      <i data-lucide="sparkles" class="nav-icon" style="color:#d4af37"></i>
+      <span style="background:linear-gradient(90deg,#d4af37,#f5e27e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700">ESQ</span>
+      <span class="nav-badge" style="background:#d4af37;color:#000;font-size:9px">NEW</span>
+    </a>
+    <div class="nav-section-label" style="margin-top:8px">Account</div>
+
+    <a href="#" class="nav-link" onclick="openModal('profileModal');return false">
+      <i data-lucide="user-circle" class="nav-icon"></i> Profile
+    </a>
+    <a href="{{ url_for('logout') }}" class="nav-link">
+      <i data-lucide="log-out" class="nav-icon"></i> Logout
+    </a>
+  </nav>
+
+  <div class="sidebar-user">
+    <a href="#" class="user-card" onclick="openModal('profileModal');return false">
+      <div class="avatar">
+        {% if session.get('avatar_url') %}
+          <img src="{{ session.avatar_url }}" alt="avatar">
+        {% else %}
+          {{ session.get('full_name','U')[:1].upper() }}
+        {% endif %}
+      </div>
+      <div class="user-info">
+        <div class="user-name">{{ session.get('full_name','User') }}</div>
+        <div class="user-role">@{{ session.get('username','') }}</div>
+      </div>
+      <i data-lucide="chevron-right" style="color:var(--text-muted);width:14px;height:14px;flex-shrink:0"></i>
+    </a>
+  </div>
+</aside>
+{% endif %}
+
+<!-- MAIN -->
+<div class="main-content">
+  {% if session.get('user_id') %}
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1">
+      <div style="min-width:0">
+        <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+        <div class="topbar-meta">{% block page_meta %}{% endblock %}</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <!-- Live Clock -->
+      <div class="live-clock">
+        <div class="live-clock-dot"></div>
+        <span id="liveClock">--:--:--</span>
+      </div>
+      <!-- Command Palette trigger -->
+      <button class="btn-icon" onclick="openCmd()" title="Ctrl+K">
+        <i data-lucide="search" style="width:15px;height:15px"></i>
+      </button>
+      <!-- Theme Toggle -->
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+        <i data-lucide="sun"  class="sun"  style="width:16px;height:16px"></i>
+        <i data-lucide="moon" class="moon" style="width:16px;height:16px"></i>
+      </button>
+      {% block topbar_actions %}{% endblock %}
+      <!-- Avatar + Dropdown -->
+      <div style="position:relative" id="avatarDropWrap">
+        <div class="avatar" style="cursor:pointer" onclick="toggleAvatarDrop()" id="avatarBtn">
+          {% if session.get('avatar_url') %}
+            <img src="{{ session.avatar_url }}" alt="avatar">
+          {% else %}
+            {{ session.get('full_name','U')[:1].upper() }}
+          {% endif %}
+        </div>
+        <div id="avatarDrop" style="
+          position:absolute;top:calc(100% + 10px);right:0;
+          background:var(--bg-surface);border:1.5px solid var(--border);
+          border-radius:14px;padding:8px;min-width:200px;
+          box-shadow:0 8px 32px rgba(0,0,0,.3);
+          z-index:500;display:none;
+        ">
+          <div style="padding:10px 12px 10px;border-bottom:1px solid var(--border);margin-bottom:6px">
+            <div style="font-size:13px;font-weight:700;color:var(--text-primary)">{{ session.get('full_name','Admin') }}</div>
+            <div style="font-size:11px;color:var(--text-muted)">@{{ session.get('username','admin') }}</div>
+          </div>
+          <button onclick="openModal('profileModal');closeAvatarDrop()" style="width:100%;padding:9px 12px;background:none;border:none;border-radius:8px;text-align:left;font-size:13px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:10px;font-family:'Outfit',sans-serif;transition:background .15s" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='none'">
+            <i data-lucide="user" style="width:14px;height:14px"></i> Profile & Settings
+          </button>
+
+          <a href="/logout" style="width:100%;padding:9px 12px;background:none;border:none;border-radius:8px;text-align:left;font-size:13px;color:var(--rose);cursor:pointer;display:flex;align-items:center;gap:10px;font-family:'Outfit',sans-serif;text-decoration:none;transition:background .15s" onmouseover="this.style.background='rgba(244,63,94,.08)'" onmouseout="this.style.background='none'">
+            <i data-lucide="log-out" style="width:14px;height:14px"></i> Logout
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+  {% endif %}
+
+  <main class="page-content page-transition">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, msg in messages %}
+        <div class="flash {{ category }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+</div>
+
+<!-- ── COMMAND PALETTE ── -->
+<div class="cmd-overlay" id="cmdOverlay" onclick="if(event.target===this)closeCmd()">
+  <div class="cmd-box">
+    <div class="cmd-search-row">
+      <i data-lucide="search" style="width:18px;height:18px;color:var(--text-muted);flex-shrink:0"></i>
+      <input type="text" id="cmdInput" placeholder="Cari task, goal, atau ketik perintah..." autocomplete="off" oninput="cmdSearch(this.value)" onkeydown="cmdKeydown(event)">
+      <kbd style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;padding:2px 6px;flex-shrink:0">ESC</kbd>
+    </div>
+    <div class="cmd-results" id="cmdResults">
+      <!-- Default shortcuts -->
+      <div class="cmd-section-label">Navigasi Cepat</div>
+      <a href="/dashboard" class="cmd-item" onclick="closeCmd()">
+        <div class="cmd-item-icon"><i data-lucide="layout-dashboard" style="width:14px;height:14px;color:var(--indigo)"></i></div>
+        <div><div class="cmd-item-text">Dashboard</div><div class="cmd-item-sub">Halaman utama</div></div>
+        <kbd class="cmd-item-kbd">G D</kbd>
+      </a>
+      <a href="/tasks" class="cmd-item" onclick="closeCmd()">
+        <div class="cmd-item-icon"><i data-lucide="check-square" style="width:14px;height:14px;color:var(--emerald)"></i></div>
+        <div><div class="cmd-item-text">Tasks</div><div class="cmd-item-sub">Kelola task harian</div></div>
+        <kbd class="cmd-item-kbd">G T</kbd>
+      </a>
+      <a href="/reminders" class="cmd-item" onclick="closeCmd()">
+        <div class="cmd-item-icon"><i data-lucide="bell" style="width:14px;height:14px;color:var(--indigo)"></i></div>
+        <div><div class="cmd-item-title">Pengingat</div><div class="cmd-item-sub">Kelola alarm & habit harian</div></div>
+        <kbd class="cmd-item-kbd">G R</kbd>
+      </a>
+      <a href="/roadmap" class="cmd-item" onclick="closeCmd()">
+        <div class="cmd-item-icon"><i data-lucide="map" style="width:14px;height:14px;color:var(--cyan)"></i></div>
+        <div><div class="cmd-item-text">Roadmap</div><div class="cmd-item-sub">Goals & milestone</div></div>
+        <kbd class="cmd-item-kbd">G R</kbd>
+      </a>
+      <a href="/analytics" class="cmd-item" onclick="closeCmd()">
+        <div class="cmd-item-icon"><i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--amber)"></i></div>
+        <div><div class="cmd-item-text">Analytics</div><div class="cmd-item-sub">Statistik & chart</div></div>
+        <kbd class="cmd-item-kbd">G A</kbd>
+      </a>
+      <div class="cmd-section-label">Aksi Cepat</div>
+      <div class="cmd-item" onclick="closeCmd();openModal('addTaskModal')">
+        <div class="cmd-item-icon"><i data-lucide="plus" style="width:14px;height:14px;color:var(--rose)"></i></div>
+        <div><div class="cmd-item-text">Tambah Task Baru</div><div class="cmd-item-sub">Buat task untuk hari ini</div></div>
+        <kbd class="cmd-item-kbd">N T</kbd>
+      </div>
+      <div class="cmd-item" onclick="closeCmd();toggleTheme()">
+        <div class="cmd-item-icon"><i data-lucide="sun" style="width:14px;height:14px;color:var(--amber)"></i></div>
+        <div><div class="cmd-item-text">Toggle Dark/Light Mode</div><div class="cmd-item-sub">Ganti tema tampilan</div></div>
+        <kbd class="cmd-item-kbd">T T</kbd>
+      </div>
+    </div>
+    <div class="cmd-footer">
+      <div class="cmd-hint"><kbd>↑↓</kbd> navigasi</div>
+      <div class="cmd-hint"><kbd>↵</kbd> pilih</div>
+      <div class="cmd-hint"><kbd>ESC</kbd> tutup</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PROFILE MODAL ── -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="modal-title" style="margin-bottom:0">👤 Profile</div>
+      <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="closeModal('profileModal')">
+        <i data-lucide="x" style="width:13px;height:13px"></i>
+      </button>
+    </div>
+    <!-- Profile tabs -->
+    <div style="display:flex;gap:4px;background:var(--bg-elevated);border-radius:10px;padding:4px;margin-bottom:20px">
+      <button class="profile-tab active" data-tab="info" onclick="switchProfileTab('info')">Profil</button>
+      <button class="profile-tab" data-tab="theme" onclick="switchProfileTab('theme')">Tema</button>
+      <button class="profile-tab" data-tab="password" onclick="switchProfileTab('password')">Password</button>
+    </div>
+
+    <!-- TAB: INFO -->
+    <div class="profile-tab-content" id="tab-info">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding:16px;background:var(--bg-elevated);border-radius:var(--radius-md);border:1px solid var(--border)">
+        <div class="avatar avatar-lg" id="profileAvatar">
+          {% if session.get('avatar_url') %}
+            <img src="{{ session.avatar_url }}" alt="avatar" id="avatarPreview">
+          {% else %}
+            <span id="avatarInitial">{{ session.get('full_name','U')[:1].upper() }}</span>
+          {% endif %}
+        </div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:700">{{ session.get('full_name','User') }}</div>
+          <div style="font-size:12px;color:var(--text-muted);font-family:'Space Mono',monospace">@{{ session.get('username','') }}</div>
+          <label style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--indigo);font-weight:600">
+            <i data-lucide="camera" style="width:13px;height:13px"></i> Ganti Foto
+            <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+          </label>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+        <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;text-align:center">
+          <div style="font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:var(--amber)" id="profileStreakNum">—</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">🔥 Streak Hari Ini</div>
+        </div>
+        <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;text-align:center">
+          <div style="font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:var(--indigo)" id="profileTotalDays">—</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">📅 Total Hari Aktif</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:4px" onclick="closeModal('profileModal')">Tutup</button>
+    </div>
+
+    <!-- TAB: THEME -->
+    <div class="profile-tab-content" id="tab-theme" style="display:none">
+      <div style="margin-bottom:16px">
+        <div class="form-label" style="margin-bottom:10px">🎨 Pilih Tema Tampilan</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="theme-card" data-t="dark" onclick="setTheme('dark')" style="padding:16px;border-radius:var(--radius-md);border:2px solid var(--border);cursor:pointer;transition:all 0.2s;text-align:center">
+            <div style="font-size:28px;margin-bottom:6px">🌙</div>
+            <div style="font-size:13px;font-weight:700">Dark Mode</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Space Black</div>
+          </div>
+          <div class="theme-card" data-t="light" onclick="setTheme('light')" style="padding:16px;border-radius:var(--radius-md);border:2px solid var(--border);cursor:pointer;transition:all 0.2s;text-align:center">
+            <div style="font-size:28px;margin-bottom:6px">☀️</div>
+            <div style="font-size:13px;font-weight:700">Light Mode</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Enterprise Blue</div>
+          </div>
+        </div>
+      </div>
+      <!-- Notification toggle -->
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">🔔 Push Notifikasi</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Reminder task & deadline di HP</div>
+        </div>
+        <button class="btn btn-primary" style="padding:7px 14px;font-size:12px" onclick="requestPushPermission()">Aktifkan</button>
+      </div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeModal('profileModal')">Tutup</button>
+    </div>
+
+    <!-- TAB: PASSWORD -->
+    <div class="profile-tab-content" id="tab-password" style="display:none">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="form-group">
+          <label class="form-label">Password Lama</label>
+          <input type="password" class="form-input" id="oldPassword" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password Baru</label>
+          <input type="password" class="form-input" id="newPassword" placeholder="Min. 6 karakter" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Konfirmasi Password Baru</label>
+          <input type="password" class="form-input" id="confirmPassword" placeholder="Ulangi password baru" autocomplete="new-password">
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost" onclick="closeModal('profileModal')" style="flex:1">Batal</button>
+          <button class="btn btn-primary" onclick="changePassword()" style="flex:2;justify-content:center">
+            <i data-lucide="lock" style="width:14px;height:14px"></i> Simpan Password
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+lucide.createIcons();
+
+// ── SIDEBAR ──
+function openSidebar() { const s=document.getElementById('sidebar'); const o=document.getElementById('sidebarOverlay'); if(s)s.classList.add('mobile-open'); if(o)o.classList.add('active'); }
+function closeSidebar() { const s=document.getElementById('sidebar'); const o=document.getElementById('sidebarOverlay'); if(s)s.classList.remove('mobile-open'); if(o)o.classList.remove('active'); }
+
+// ── AVATAR DROPDOWN ──
+function toggleAvatarDrop() {
+  const drop = document.getElementById('avatarDrop');
+  if (!drop) return;
+  const isOpen = drop.style.display === 'block';
+  drop.style.display = isOpen ? 'none' : 'block';
+}
+function closeAvatarDrop() {
+  const drop = document.getElementById('avatarDrop');
+  if (drop) drop.style.display = 'none';
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#avatarDropWrap')) closeAvatarDrop();
+});
+
+// ── MODAL ──
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // Step 1: make overlay visible but modal still off-screen
+  el.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Step 2: on mobile, ensure modal slides in after overlay is painted
+  const modal = el.querySelector('.modal');
+  if (modal && window.innerWidth <= 540) {
+    modal.style.transition = 'none';
+    modal.style.transform = 'translateY(100%)';
+    modal.style.opacity = '1';
+    // Force paint, then animate in
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        modal.style.transition = 'transform 0.35s cubic-bezier(0.16,1,0.3,1)';
+        modal.style.transform = 'translateY(0)';
+      });
+    });
+  }
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const modal = el.querySelector('.modal');
+  if (modal && window.innerWidth <= 540) {
+    modal.style.transition = 'transform 0.28s cubic-bezier(0.16,1,0.3,1)';
+    modal.style.transform = 'translateY(100%)';
+    setTimeout(() => {
+      el.classList.remove('open');
+      modal.style.transform = '';
+      modal.style.transition = '';
+      document.body.style.overflow = '';
+    }, 280);
+  } else {
+    el.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+document.querySelectorAll('.modal-overlay').forEach(el => el.addEventListener('click', function(e){ if(e.target===this) closeModal(this.id); }));
+
+// ── TOAST ──
+function showToast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icon = type==='success'?'check-circle':'x-circle';
+  el.innerHTML = `<i data-lucide="${icon}" style="width:16px;height:16px;color:var(--${type==='success'?'emerald':'rose'})"></i> ${msg}`;
+  document.getElementById('toastContainer').appendChild(el);
+  lucide.createIcons();
+  setTimeout(() => { el.style.animation='slideOut 0.3s var(--ease) forwards'; setTimeout(()=>el.remove(),300); }, 3000);
+}
+
+// ── LIVE CLOCK ──
+function updateClock() {
+  const el = document.getElementById('liveClock');
+  if (el) el.textContent = new Date().toLocaleTimeString('id-ID');
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// ── THEME ──
+const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+updateThemeCards(currentTheme);
+
+function toggleTheme() {
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  setTheme(t);
+}
+
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  updateThemeCards(t);
+  fetch('/api/theme', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({theme:t}) });
+  showToast(t==='dark' ? '🌙 Dark mode aktif' : '☀️ Light mode aktif', 'success');
+}
+
+function updateThemeCards(t) {
+  document.querySelectorAll('.theme-card').forEach(c => {
+    c.style.borderColor = c.dataset.t===t ? 'var(--indigo)' : 'var(--border)';
+    c.style.background  = c.dataset.t===t ? 'var(--indigo-glow)' : '';
+  });
+}
+
+// ── PROFILE TABS ──
+function switchProfileTab(tab) {
+  document.querySelectorAll('.profile-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  document.querySelectorAll('.profile-tab-content').forEach(c => {
+    c.style.display = c.id === 'tab-'+tab ? '' : 'none';
+  });
+  if (tab === 'info') loadProfileStats();
+}
+
+async function loadProfileStats() {
+  try {
+    // fetch streak data via analytics endpoint
+    const res = await fetch('/api/analytics/weekly');
+    const weekly = await res.json();
+    const totalDone = weekly.reduce((s,d)=>s+d.done_tasks,0);
+    // Try to get streak from page if available
+    const streakEl = document.querySelector('[data-count]');
+    if (streakEl) document.getElementById('profileStreakNum').textContent = streakEl.dataset.count || '—';
+    document.getElementById('profileTotalDays').textContent = totalDone || '—';
+  } catch(e) {}
+}
+
+// ── CHANGE PASSWORD ──
+async function changePassword() {
+  const oldPw  = document.getElementById('oldPassword').value;
+  const newPw  = document.getElementById('newPassword').value;
+  const confPw = document.getElementById('confirmPassword').value;
+  if (!oldPw || !newPw) { showToast('Semua field wajib diisi','error'); return; }
+  if (newPw !== confPw) { showToast('Konfirmasi password tidak cocok','error'); return; }
+  if (newPw.length < 6) { showToast('Password baru min. 6 karakter','error'); return; }
+  const res = await fetch('/api/password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({old_password:oldPw,new_password:newPw})});
+  const d = await res.json();
+  if (res.ok) {
+    showToast('Password berhasil diubah! 🔒','success');
+    closeModal('profileModal');
+    document.getElementById('oldPassword').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmPassword').value = '';
+  } else {
+    showToast(d.error || 'Gagal ubah password','error');
+  }
+}
+
+// ── AVATAR UPLOAD ──
+async function uploadAvatar(input) {
+  const file = input.files[0]; if (!file) return;
+  const fd = new FormData(); fd.append('avatar', file);
+  try {
+    const res = await fetch('/api/avatar', { method:'POST', body:fd });
+    const d   = await res.json();
+    if (d.url) {
+      // Update all avatars on page
+      document.querySelectorAll('.avatar').forEach(a => {
+        const img = a.querySelector('img');
+        if (img) img.src = d.url + '?t=' + Date.now();
+        else { a.innerHTML = `<img src="${d.url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; }
+      });
+      showToast('Foto profil diperbarui! 📸', 'success');
+    }
+  } catch(e) { showToast('Gagal upload foto', 'error'); }
+}
+
+// ── COMMAND PALETTE ──
+let cmdOpen = false, cmdSelected = 0;
+
+function openCmd() {
+  document.getElementById('cmdOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  cmdOpen = true;
+  setTimeout(() => { document.getElementById('cmdInput').focus(); }, 100);
+}
+
+function closeCmd() {
+  document.getElementById('cmdOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  cmdOpen = false;
+  document.getElementById('cmdInput').value = '';
+  resetCmdResults();
+}
+
+function resetCmdResults() {
+  // Will be handled by empty search
+}
+
+let cmdTimer;
+async function cmdSearch(q) {
+  clearTimeout(cmdTimer);
+  if (q.length < 2) { resetDefaultCmdResults(); return; }
+  cmdTimer = setTimeout(async () => {
+    const res  = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    const container = document.getElementById('cmdResults');
+    if (!data.length) {
+      container.innerHTML = `<div class="cmd-empty"><i data-lucide="search-x" style="width:24px;height:24px;opacity:0.3"></i><br>Tidak ada hasil untuk "<strong>${q}</strong>"</div>`;
+      lucide.createIcons(); return;
+    }
+    const tasks = data.filter(d=>d.type==='task');
+    const goals = data.filter(d=>d.type==='goal');
+    let html = '';
+    if (tasks.length) {
+      html += `<div class="cmd-section-label">Tasks</div>`;
+      tasks.forEach(t => {
+        const color = t.status==='done'?'var(--emerald)':'var(--indigo)';
+        html += `<a href="/tasks" class="cmd-item" onclick="closeCmd()">
+          <div class="cmd-item-icon"><i data-lucide="check-circle" style="width:14px;height:14px;color:${color}"></i></div>
+          <div><div class="cmd-item-text">${t.title}</div><div class="cmd-item-sub">${t.task_date} · ${t.status}</div></div>
+          <span class="badge badge-${t.priority==='urgent'?'rose':t.priority==='high'?'amber':'indigo'}" style="font-size:9px">${t.priority}</span>
+        </a>`;
+      });
+    }
+    if (goals.length) {
+      html += `<div class="cmd-section-label">Goals</div>`;
+      goals.forEach(g => {
+        html += `<a href="/roadmap" class="cmd-item" onclick="closeCmd()">
+          <div class="cmd-item-icon"><i data-lucide="${g.icon||'target'}" style="width:14px;height:14px;color:${g.color}"></i></div>
+          <div><div class="cmd-item-text">${g.title}</div><div class="cmd-item-sub">Goal tahunan</div></div>
+        </a>`;
+      });
+    }
+    container.innerHTML = html;
+    lucide.createIcons();
+  }, 200);
+}
+
+function resetDefaultCmdResults() {
+  // Reset to show default shortcuts - just reload the static html
+  location.reload(); // crude but works; ideally store default HTML
+}
+
+function cmdKeydown(e) {
+  if (e.key === 'Escape') { closeCmd(); return; }
+  const items = document.querySelectorAll('#cmdResults .cmd-item');
+  if (e.key === 'ArrowDown') { e.preventDefault(); cmdSelected = Math.min(cmdSelected+1, items.length-1); highlightCmd(items); }
+  if (e.key === 'ArrowUp')   { e.preventDefault(); cmdSelected = Math.max(cmdSelected-1, 0); highlightCmd(items); }
+  if (e.key === 'Enter' && items[cmdSelected]) { items[cmdSelected].click(); }
+}
+
+function highlightCmd(items) {
+  items.forEach((item,i) => item.classList.toggle('active', i===cmdSelected));
+  if(items[cmdSelected]) items[cmdSelected].scrollIntoView({block:'nearest'});
+}
+
+// Global keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key==='k') { e.preventDefault(); cmdOpen ? closeCmd() : openCmd(); }
+  if (e.key==='Escape' && cmdOpen) closeCmd();
+  // G + key shortcuts
+  if (!e.ctrlKey && !e.metaKey && !cmdOpen && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA') {
+    if (e.key==='g') window._gPressed = true;
+    if (window._gPressed) {
+      if (e.key==='d') { window.location='/dashboard'; window._gPressed=false; }
+      if (e.key==='r') { window.location='/reminders'; window._gPressed=false; }
+      if (e.key==='f') { window.location='/finance'; window._gPressed=false; }
+      if (e.key==='t') { window.location='/tasks'; window._gPressed=false; }
+      if (e.key==='r') { window.location='/roadmap'; window._gPressed=false; }
+      if (e.key==='a') { window.location='/analytics'; window._gPressed=false; }
+    }
+    setTimeout(()=>{ window._gPressed=false; }, 1000);
+  }
+});
+
+// ── CONFETTI ──
+function launchConfetti() {
+  const colors = ['#6366f1','#10b981','#f59e0b','#f43f5e','#06b6d4','#a855f7','#ec4899'];
+  for (let i=0; i<80; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.cssText = `
+      left:${Math.random()*100}vw;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;
+      border-radius:${Math.random()>0.5?'50%':'2px'};
+      --dur:${2+Math.random()*2}s;
+      --delay:${Math.random()*0.5}s;
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+}
+
+// ── POMODORO (global state) ──
+window.pomodoroState = {};
+
+function startPomodoro(taskId, taskTitle, mins) {
+  if (window.pomodoroState[taskId]?.running) return;
+  let seconds = (mins || 25) * 60;
+  const wrap = document.getElementById(`pomo-${taskId}`);
+  const display = document.getElementById(`pomo-time-${taskId}`);
+  if (!wrap || !display) return;
+  wrap.classList.add('active');
+  showToast(`⏱ Pomodoro dimulai: ${taskTitle}`, 'success');
+
+  const interval = setInterval(() => {
+    seconds--;
+    const m = String(Math.floor(seconds/60)).padStart(2,'0');
+    const s = String(seconds%60).padStart(2,'0');
+    display.textContent = `${m}:${s}`;
+    if (seconds <= 0) {
+      clearInterval(interval);
+      wrap.classList.remove('active');
+      delete window.pomodoroState[taskId];
+      launchConfetti();
+      showToast(`🎉 Pomodoro selesai! Task: ${taskTitle}`, 'success');
+    }
+  }, 1000);
+  window.pomodoroState[taskId] = { interval, running:true };
+}
+
+function stopPomodoro(taskId) {
+  const state = window.pomodoroState[taskId];
+  if (state) { clearInterval(state.interval); delete window.pomodoroState[taskId]; }
+  const wrap = document.getElementById(`pomo-${taskId}`);
+  if (wrap) wrap.classList.remove('active');
+}
+</script>
+
+{% block scripts %}{% endblock %}
+
+<script>
+// ── FAB REMOVED — pakai direct nav ──
+// closeMoreDrawer stub untuk kompatibilitas kode lain
+
+// ── STUB: FAB removed ──
+function closeFabMenu() {}
+function toggleFabMenu() {}
+
+// ── MORE DRAWER ──
+function openMoreDrawer() {
+  document.getElementById('moreDrawer').classList.add('open');
+  document.getElementById('moreDrawerOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeMoreDrawer() {
+  const d = document.getElementById('moreDrawer');
+  const o = document.getElementById('moreDrawerOverlay');
+  if (d) d.classList.remove('open');
+  if (o) o.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ── GLOBAL MOOD MODAL ──
+let _globalSelectedMood = null;
+function openGlobalMoodModal() {
+  _globalSelectedMood = null;
+  // Reset UI
+  document.querySelectorAll('#globalMoodGrid .mood-pill').forEach(p => p.classList.remove('selected'));
+  const noteEl = document.getElementById('globalMoodNote');
+  if (noteEl) noteEl.value = '';
+  const btn = document.getElementById('globalSaveMoodBtn');
+  if (btn) btn.disabled = true;
+  openModal('globalMoodModal');
+}
+function selectGlobalMood(el) {
+  _globalSelectedMood = { emoji: el.dataset.mood, label: el.dataset.label };
+  document.querySelectorAll('#globalMoodGrid .mood-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  const btn = document.getElementById('globalSaveMoodBtn');
+  if (btn) btn.disabled = false;
+}
+async function saveGlobalMood() {
+  if (!_globalSelectedMood) return;
+  const note = document.getElementById('globalMoodNote').value;
+  try {
+    const res = await fetch('/api/mood', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ mood: _globalSelectedMood.emoji, label: _globalSelectedMood.label, note })
+    });
+    if (res.ok) {
+      closeModal('globalMoodModal');
+      showToast('Mood tersimpan ' + _globalSelectedMood.emoji, 'success');
+      // Update mood display on dashboard if present
+      const display = document.getElementById('moodDisplay');
+      if (display) display.textContent = _globalSelectedMood.emoji;
+      // Update mood FAB emoji
+      const fabEmoji = document.getElementById('moodFabEmoji');
+      if (fabEmoji) fabEmoji.textContent = _globalSelectedMood.emoji;
+    } else {
+      showToast('Gagal simpan mood', 'error');
+    }
+  } catch(e) {
+    showToast('Gagal simpan mood', 'error');
+  }
+}
+
+// ── APEX SPARK (task done animation) ──
+function apexSpark(x, y) {
+  const container = document.getElementById('apexSparkContainer');
+  if (!container) return;
+  const colors = ['#6366f1','#a5b4fc','#06b6d4','#d4af37','#f5e27e','#10b981'];
+  for (let i = 0; i < 18; i++) {
+    const spark = document.createElement('div');
+    spark.className = 'apex-spark';
+    const angle = (i / 18) * 360;
+    const dist  = 60 + Math.random() * 80;
+    const tx    = Math.cos(angle * Math.PI / 180) * dist;
+    const ty    = Math.sin(angle * Math.PI / 180) * dist - 40;
+    const size  = 4 + Math.random() * 6;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    spark.style.cssText = `
+      left:${x}px; top:${y}px;
+      width:${size}px; height:${size}px;
+      border-radius:50%; background:${color};
+      --tx:${tx}px; --ty:${ty}px;
+      animation:sparkFly ${0.5 + Math.random()*0.4}s ease-out forwards;
+      box-shadow:0 0 6px ${color};
+    `;
+    container.appendChild(spark);
+    setTimeout(() => spark.remove(), 1000);
+  }
+  // Flash the logo
+  const logo = document.getElementById('apexLogoMark');
+  if (logo) {
+    logo.style.animation = 'logoFlash 0.6s ease-in-out';
+    setTimeout(() => logo.style.animation = '', 600);
+  }
+}
+
+// Intercept task done clicks — attach to dynamic content
+document.addEventListener('click', e => {
+  const check = e.target.closest('.task-check');
+  if (check && !check.classList.contains('checked')) {
+    const rect = check.getBoundingClientRect();
+    apexSpark(rect.left + rect.width/2, rect.top + rect.height/2);
+  }
+});
+
+// ── ADAPTIVE ROADMAP CHECK ──
+async function checkAdaptive() {
+  try {
+    const res  = await fetch('/api/adaptive/check');
+    const data = await res.json();
+    if (data.adaptive_msg) {
+      setTimeout(() => {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+          position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+          background:var(--bg-surface); border:1px solid rgba(212,175,55,0.3);
+          border-radius:14px; padding:14px 20px; z-index:500;
+          max-width:320px; text-align:center; font-size:13px;
+          box-shadow:0 8px 32px rgba(0,0,0,0.4);
+          animation:fadeUp 0.4s ease both;
+        `;
+        toast.innerHTML = `
+          <div style="font-size:20px;margin-bottom:6px">🤗</div>
+          <div style="font-weight:600;margin-bottom:4px">Adaptive Mode</div>
+          <div style="color:var(--text-secondary);line-height:1.5">${data.adaptive_msg}</div>
+          <button onclick="this.parentElement.remove()" style="margin-top:10px;background:none;border:none;color:var(--indigo);cursor:pointer;font-size:12px;font-weight:700">Oke, terima kasih!</button>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 8000);
+      }, 3000);
+    }
+  } catch(e) {}
+}
+
+{% if session.get('user_id') %}
+// Run adaptive check on every page load
+checkAdaptive();
+// Load today's mood for FAB indicator
+(async function() {
+  try {
+    const r = await fetch('/api/mood/today');
+    if (r.ok) {
+      const d = await r.json();
+      if (d.mood) {
+        const fab = document.getElementById('moodFabEmoji');
+        if (fab) fab.textContent = d.mood;
+      }
+    }
+  } catch(e) {}
+})();
+{% endif %}
+
+// ── CUSTOM APP LOGO ──
+function applyAppLogo(url) {
+  if (!url) return;
+  // Sidebar
+  const sImg = document.getElementById('sidebarLogoImg');
+  const sSvg = document.getElementById('sidebarLogoSvg');
+  if (sImg) {
+    sImg.src = url;
+    sImg.onload = () => { sImg.style.display = 'block'; if(sSvg) sSvg.style.display = 'none'; };
+  }
+}
+
+function uploadAppLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const url = e.target.result;
+    localStorage.setItem('appLogoUrl', url);
+    applyAppLogo(url);
+    // Update preview in modal
+    const pImg = document.getElementById('logoPreviewImg');
+    const pSvg = document.getElementById('logoPreviewSvg');
+    if (pImg) { pImg.src = url; pImg.style.display = 'block'; if(pSvg) pSvg.style.display = 'none'; }
+    showToast('Logo berhasil diperbarui! 🎨', 'success');
+    lucide.createIcons();
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetAppLogo() {
+  localStorage.removeItem('appLogoUrl');
+  const sImg = document.getElementById('sidebarLogoImg');
+  const sSvg = document.getElementById('sidebarLogoSvg');
+  if (sImg) sImg.style.display = 'none';
+  if (sSvg) sSvg.style.display = 'block';
+  const pImg = document.getElementById('logoPreviewImg');
+  const pSvg = document.getElementById('logoPreviewSvg');
+  if (pImg) pImg.style.display = 'none';
+  if (pSvg) pSvg.style.display = 'block';
+  showToast('Logo direset ke default', 'success');
+}
+
+// Load custom logo on every page
+(function() {
+  const url = localStorage.getItem('appLogoUrl');
+  if (url) applyAppLogo(url);
+  // Also populate preview if profile modal opens
+  document.addEventListener('click', e => {
+    if (e.target.closest('[onclick*="openModal('profileModal')"]') ||
+        e.target.closest('.profile-trigger')) {
+      const url = localStorage.getItem('appLogoUrl');
+      const pImg = document.getElementById('logoPreviewImg');
+      const pSvg = document.getElementById('logoPreviewSvg');
+      if (url && pImg) {
+        pImg.src = url; pImg.style.display = 'block';
+        if(pSvg) pSvg.style.display = 'none';
+      }
+    }
+  });
+})();
+
+// ── SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').then(reg => {
+    console.log('[SW] Registered:', reg.scope);
+  }).catch(err => console.log('[SW] Failed:', err));
+}
+
+// ── PWA INSTALL BANNER ──
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  setTimeout(() => {
+    const banner = document.getElementById('pwaBanner');
+    if (banner) banner.classList.add('show');
+  }, 3000);
+});
+
+function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(r => {
+    if (r.outcome === 'accepted') showToast('✅ ActivityOS berhasil diinstall!', 'success');
+    deferredPrompt = null;
+    hidePWABanner();
+  });
+}
+function hidePWABanner() {
+  const b = document.getElementById('pwaBanner');
+  if (b) { b.classList.remove('show'); setTimeout(()=>b.remove(),400); }
+}
+
+// ── PUSH NOTIFICATION PERMISSION ──
+async function requestPushPermission() {
+  if (!('Notification' in window)) return;
+  const p = await Notification.requestPermission();
+  if (p === 'granted') {
+    showToast('🔔 Notifikasi aktif!', 'success');
+    hideNotifPrompt();
+    subscribeToPush();
+  } else {
+    showToast('Notifikasi diblokir', 'error');
+    hideNotifPrompt();
+  }
+}
+
+async function subscribeToPush() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(
+        'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjZqJHqbpyFEnJHSNVbBbI5DXGJ9I'
+      )
+    });
+    await fetch('/api/push/subscribe', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(sub.toJSON())
+    });
+  } catch(e) { console.log('Push subscribe failed:', e); }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64  = (base64String + padding).replace(/-/g,'+').replace(/_/g,'/');
+  const raw = window.atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+function hideNotifPrompt() {
+  const p = document.getElementById('notifPrompt');
+  if (p) { p.classList.remove('show'); setTimeout(()=>p.remove(),400); }
+}
+
+// Show notif prompt after 5s if not granted
+setTimeout(() => {
+  if ('Notification' in window && Notification.permission === 'default') {
+    const p = document.getElementById('notifPrompt');
+    if (p) p.classList.add('show');
+  }
+}, 5000);
+
+// ── ONBOARDING WIZARD ──
+{% if session.get('user_id') and not session.get('onboarded') %}
+(function() {
+  const QUESTIONS = [
+    {
+      q: "Apa yang paling bikin kamu nggak tenang minggu ini?",
+      options: [
+        { text:"Skill saya nggak berkembang",     tag:'builder'  },
+        { text:"Pikiran saya nggak tenang",        tag:'zen'      },
+        { text:"Karir saya stagnan",               tag:'achiever' },
+        { text:"Saya nggak tahu mau fokus ke apa", tag:'explorer' },
+      ]
+    },
+    {
+      q: "Kalau punya 1 jam ekstra hari ini, mau dipakai buat apa?",
+      options: [
+        { text:"Belajar skill baru atau ngoding",  tag:'builder'  },
+        { text:"Meditasi atau jalan santai",        tag:'zen'      },
+        { text:"Kerjakan project yang tertunda",   tag:'achiever' },
+        { text:"Eksplorasi hal baru yang menarik", tag:'explorer' },
+      ]
+    },
+    {
+      q: "Kamu paling sering merasa produktif ketika?",
+      options: [
+        { text:"Menghasilkan sesuatu yang nyata",  tag:'builder'  },
+        { text:"Pikiran jernih dan hati tenang",   tag:'zen'      },
+        { text:"Checklist selesai semua",          tag:'achiever' },
+        { text:"Mencoba hal yang belum pernah dicoba", tag:'explorer' },
+      ]
+    }
+  ];
+
+  const ARCHETYPES = {
+    builder:  { emoji:'🔨', label:'The Builder',      color:'#6366f1', desc:'Kamu fokus membangun skill dan karya nyata. Mulai dari Roadmap "Kuasai 1 Skill Baru."' },
+    zen:      { emoji:'🧘', label:'The Zen Master',    color:'#10b981', desc:'Kamu butuh keseimbangan dan ketenangan. Mulai dari rutinitas ESQ pagi & malam.' },
+    achiever: { emoji:'🚀', label:'The High Achiever', color:'#f59e0b', desc:'Kamu ambisius dan target-driven. Mulai dari Roadmap dengan milestone bulanan yang jelas.' },
+    explorer: { emoji:'🧭', label:'The Explorer',      color:'#06b6d4', desc:'Kamu suka eksplorasi. Mulai dengan task harian yang beragam dan lihat mana yang paling resonan.' },
+  };
+
+  let step = 0;
+  const answers = [];
+  const overlay = document.createElement('div');
+  overlay.className = 'onboard-overlay';
+  overlay.id = 'onboardOverlay';
+
+  function render() {
+    if (step < QUESTIONS.length) {
+      const q = QUESTIONS[step];
+      const progress = Math.round((step/QUESTIONS.length)*100);
+      overlay.innerHTML = `
+        <div class="onboard-box">
+          <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-muted);letter-spacing:2px;margin-bottom:16px;text-transform:uppercase">
+            The Compass Quiz &nbsp;·&nbsp; ${step+1}/${QUESTIONS.length}
+          </div>
+          <div style="height:3px;background:var(--bg-overlay);border-radius:100px;margin-bottom:20px">
+            <div style="height:100%;width:${progress}%;background:linear-gradient(90deg,var(--indigo),var(--cyan));border-radius:100px;transition:width 0.4s"></div>
+          </div>
+          <div class="onboard-icon">🧭</div>
+          <div class="onboard-title" style="font-size:16px">${q.q}</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
+            ${q.options.map((o,i) => `
+              <button onclick="window._compassAnswer('${o.tag}')"
+                style="text-align:left;padding:12px 16px;border-radius:10px;border:1px solid var(--border);
+                       background:var(--bg-elevated);color:var(--text-primary);cursor:pointer;
+                       font-family:'Outfit',sans-serif;font-size:13px;transition:all 0.15s"
+                onmouseover="this.style.borderColor='var(--indigo)';this.style.background='rgba(99,102,241,0.08)'"
+                onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-elevated)'">
+                ${o.text}
+              </button>`).join('')}
+          </div>
+          <button onclick="window._compassSkip()" style="background:none;border:none;color:var(--text-muted);font-size:11px;cursor:pointer;display:block;margin:14px auto 0">
+            Lewati quiz ini
+          </button>
+        </div>`;
+    } else {
+      // Show result
+      const scores = {builder:0,zen:0,achiever:0,explorer:0};
+      answers.forEach(a => scores[a]++);
+      const archetype = Object.entries(scores).sort((a,b)=>b[1]-a[1])[0][0];
+      const info = ARCHETYPES[archetype];
+      overlay.innerHTML = `
+        <div class="onboard-box" style="text-align:center">
+          <div style="font-size:52px;margin-bottom:12px">${info.emoji}</div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--text-muted);margin-bottom:6px">Arketip kamu</div>
+          <div style="font-size:22px;font-weight:800;color:${info.color};margin-bottom:10px">${info.label}</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-bottom:20px">${info.desc}</div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:14px"
+                  onclick="window._compassFinish('${archetype}')">
+            🚀 Mulai Perjalananku!
+          </button>
+        </div>`;
+    }
+  }
+
+  window._compassAnswer = function(tag) {
+    answers.push(tag);
+    step++;
+    render();
+  };
+
+  window._compassSkip = async function() {
+    await fetch('/api/onboarded',{method:'POST'});
+    overlay.style.animation='fadeOut 0.4s ease forwards';
+    setTimeout(()=>overlay.remove(),400);
+  };
+
+  window._compassFinish = async function(archetype) {
+    await fetch('/api/compass',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answers:answers.map(t=>({tag:t}))})});
+    await fetch('/api/onboarded',{method:'POST'});
+    await fetch('/api/first-domino',{method:'POST'}); // create first tiny task
+    overlay.style.animation='fadeOut 0.4s ease forwards';
+    setTimeout(()=>{
+      overlay.remove();
+      showToast(`Selamat datang, ${archetype === 'builder'?'Builder':'achiever'==='achiever'?'High Achiever':archetype==='zen'?'Zen Master':'Explorer'}! 🎉`, 'success');
+    },400);
+  };
+
+  document.body.appendChild(overlay);
+  render();
+})();
+
+const style = document.createElement('style');
+style.textContent = '@keyframes fadeOut{to{opacity:0;transform:scale(0.95)}}';
+document.head.appendChild(style);
+{% endif %}
+</script>
+
+<!-- ── BOTTOM NAV (Mobile) ── -->
+<nav class="bottom-nav" id="bottomNav">
+  <div class="bottom-nav-inner">
+
+    <!-- 1. Analytics -->
+    <a href="/analytics" class="bn-item {% if request.endpoint=='analytics' %}active{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+        <line x1="6" y1="20" x2="6" y2="14"/>
+      </svg>
+      Analytics
+    </a>
+
+    <!-- 2. Tasks -->
+    <a href="/tasks" class="bn-item {% if request.endpoint=='tasks_page' %}active{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+        <polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/>
+      </svg>
+      Tasks
+    </a>
+
+    <!-- 3. CENTER — Home (special center button) -->
+    <div style="flex:0 0 72px;position:relative;display:flex;justify-content:center;overflow:visible">
+      <a href="/dashboard" class="bn-home-center {% if request.endpoint=='dashboard' %}is-active{% endif %}" aria-label="Home">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span class="bn-home-label">Home</span>
+      </a>
+    </div>
+
+    <!-- Set Mood FAB (visible on all mobile pages) -->
+    <div id="moodFabWrap" style="position:fixed;bottom:72px;right:16px;z-index:399;display:none">
+      <button onclick="openGlobalMoodModal()" id="moodFab"
+        style="width:46px;height:46px;border-radius:50%;background:var(--bg-surface);border:1.5px solid var(--border-bright);
+               box-shadow:0 4px 16px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;
+               font-size:22px;cursor:pointer;transition:transform 0.2s"
+        title="Set Mood" aria-label="Set Mood">
+        <span id="moodFabEmoji">😊</span>
+      </button>
+    </div>
+
+    <!-- 4. Roadmap -->
+    <a href="/roadmap" class="bn-item {% if request.endpoint=='roadmap' %}active{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+        <line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
+      </svg>
+      Roadmap
+    </a>
+
+    <!-- 5. ESQ -->
+    <a href="/esq" class="bn-item {% if request.endpoint=='isq_page' %}active{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </svg>
+      <span style="background:linear-gradient(90deg,#d4af37,#f5e27e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700">ESQ</span>
+    </a>
+
+  </div>
+</nav>
+
+<!-- APEX SPARK CONTAINER -->
+<div class="apex-spark-container" id="apexSparkContainer"></div>
+
+<!-- PWA Install Banner -->
+<div class="pwa-banner" id="pwaBanner">
+  <div class="pwa-banner-icon">
+    <svg width="22" height="22" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+  </div>
+  <div class="pwa-banner-text">
+    <div class="pwa-banner-title">Install ActivityOS</div>
+    <div class="pwa-banner-sub">Tambah ke homescreen — akses offline!</div>
+  </div>
+  <button class="btn btn-primary" style="padding:8px 14px;font-size:12px;flex-shrink:0" onclick="installPWA()">Install</button>
+  <button class="btn-icon" onclick="hidePWABanner()" style="flex-shrink:0">
+    <i data-lucide="x" style="width:14px;height:14px"></i>
+  </button>
+</div>
+
+<!-- Push Notification Prompt -->
+<div class="notif-prompt" id="notifPrompt">
+  <div class="notif-prompt-title">
+    <span style="font-size:18px">🔔</span> Aktifkan Notifikasi
+  </div>
+  <div class="notif-prompt-sub">Dapat reminder task & deadline langsung di HP kamu</div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-primary" style="flex:2;padding:8px 12px;font-size:12px;justify-content:center" onclick="requestPushPermission()">Aktifkan</button>
+    <button class="btn btn-ghost" style="flex:1;padding:8px 12px;font-size:12px;justify-content:center" onclick="hideNotifPrompt()">Nanti</button>
+  </div>
+</div>
+
+
+<!-- ══ MORE DRAWER ══ -->
+<div class="more-drawer-overlay" id="moreDrawerOverlay" onclick="closeMoreDrawer()"></div>
+<div class="more-drawer" id="moreDrawer">
+  <span class="more-drawer-handle"></span>
+  <div class="more-drawer-title">Menu Lainnya</div>
+
+  <!-- Grid 2 baris x 3 kolom -->
+  <div class="more-grid">
+    <!-- Row 1 -->
+    <a href="/analytics" class="more-grid-item" onclick="closeMoreDrawer()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)">📊</div>
+      <span class="more-grid-label">Analytics</span>
+    </a>
+    <button class="more-grid-item" onclick="closeMoreDrawer();openGlobalMoodModal()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#10b981,#34d399)">😊</div>
+      <span class="more-grid-label">Set Mood</span>
+    </button>
+    <a href="/esq" class="more-grid-item" onclick="closeMoreDrawer()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#d4af37,#f5e27e)">✨</div>
+      <span class="more-grid-label">ESQ</span>
+    </a>
+    <!-- Row 2 -->
+    <button class="more-grid-item" onclick="closeMoreDrawer();fabGo('/tasks','noteModal')">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#06b6d4,#22d3ee)">📝</div>
+      <span class="more-grid-label">Quick Notes</span>
+    </button>
+    <a href="/export/daily" class="more-grid-item" onclick="closeMoreDrawer()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa)">📄</div>
+      <span class="more-grid-label">Export PDF</span>
+    </a>
+    <button class="more-grid-item" onclick="closeMoreDrawer();openModal('profileModal')">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#6366f1,#818cf8)">👤</div>
+      <span class="more-grid-label">Profile</span>
+    </button>
+  </div>
+
+  <div class="more-divider"></div>
+  <div class="more-bottom-row">
+    <a href="/logout" class="more-bottom-btn danger">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </a>
+  </div>
+</div>
+
+<!-- ══ GLOBAL MOOD MODAL ══ -->
+<div class="modal-overlay" id="globalMoodModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <div class="modal-title" style="margin-bottom:0">😊 Bagaimana perasaanmu?</div>
+      <button onclick="closeModal('globalMoodModal')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <!-- 5 emoji pills -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px" id="globalMoodGrid">
+      <button class="mood-pill" data-mood="😫" data-label="Exhausted" onclick="selectGlobalMood(this)">
+        <span>😫</span><span>Lelah</span>
+      </button>
+      <button class="mood-pill" data-mood="😟" data-label="Worried" onclick="selectGlobalMood(this)">
+        <span>😟</span><span>Cemas</span>
+      </button>
+      <button class="mood-pill" data-mood="😐" data-label="Neutral" onclick="selectGlobalMood(this)">
+        <span>😐</span><span>Biasa</span>
+      </button>
+      <button class="mood-pill" data-mood="😊" data-label="Happy" onclick="selectGlobalMood(this)">
+        <span>😊</span><span>Senang</span>
+      </button>
+      <button class="mood-pill" data-mood="🔥" data-label="On Fire" onclick="selectGlobalMood(this)">
+        <span>🔥</span><span>Gasss!</span>
+      </button>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">Catatan (opsional)</label>
+      <input type="text" class="form-input" id="globalMoodNote" placeholder="Apa yang sedang kamu rasakan?">
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost" onclick="closeModal('globalMoodModal')" style="flex:1">Batal</button>
+      <button class="btn btn-primary" id="globalSaveMoodBtn" onclick="saveGlobalMood()" style="flex:2;justify-content:center" disabled>
+        Simpan Mood
+      </button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

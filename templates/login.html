@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#0a0a0f">
+  <title>ActivityOS — Enterprise Productivity</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    :root{--indigo:#6366f1;--indigo-glow:rgba(99,102,241,0.25);--cyan:#06b6d4;--emerald:#10b981;--rose:#f43f5e;--gold:#d4af37;--ease:cubic-bezier(0.16,1,0.3,1);}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{width:100%;height:100%;overflow:hidden;}
+    body{font-family:'Outfit',sans-serif;background:#0a0a0f;color:#f0f0f8;}
+    body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(99,102,241,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.035) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0;}
+
+    /* ════════ PHASE 1: SPLASH ════════ */
+    #phaseSplash{position:fixed;inset:0;z-index:100;background:#0a0a0f;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.7s var(--ease),transform 0.7s var(--ease);}
+    #phaseSplash.exit{opacity:0;transform:scale(1.06);pointer-events:none;}
+
+    .sp-logo-wrap{position:relative;animation:splashIn 0.9s var(--ease) 0.2s both;}
+    .sp-logo-bg{width:90px;height:90px;background:linear-gradient(135deg,#12122a,#1a1a3e);border-radius:26px;border:1px solid rgba(99,102,241,0.35);display:flex;align-items:center;justify-content:center;box-shadow:0 0 60px var(--indigo-glow),0 0 120px rgba(6,182,212,0.1);}
+    .sp-ring{position:absolute;inset:-9px;border-radius:35px;border:2px solid transparent;background:linear-gradient(135deg,rgba(99,102,241,0.7),rgba(6,182,212,0.3),transparent 60%) border-box;animation:spinRing 3s linear infinite;}
+    @keyframes spinRing{to{transform:rotate(360deg)}}
+    @keyframes splashIn{from{opacity:0;transform:scale(0.3) rotate(-20deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+
+    .sp-name{font-size:34px;font-weight:900;letter-spacing:-1.5px;margin-top:24px;animation:fadeUp 0.6s var(--ease) 0.7s both;}
+    .sp-name span{color:var(--indigo);}
+    .sp-tagline{font-family:'Space Mono',monospace;font-size:10px;color:rgba(99,102,241,0.65);letter-spacing:3px;text-transform:uppercase;margin-top:8px;animation:fadeUp 0.6s var(--ease) 0.9s both;}
+    .sp-bar{margin-top:48px;width:200px;height:2px;background:rgba(255,255,255,0.05);border-radius:100px;overflow:hidden;animation:fadeUp 0.4s var(--ease) 1.1s both;}
+    .sp-bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--indigo),var(--cyan));border-radius:100px;animation:barFill 1.4s var(--ease) 1.2s forwards;}
+    @keyframes barFill{to{width:100%}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+    .sp-particle{position:absolute;border-radius:50%;animation:pFloat var(--d,5s) ease-in-out infinite var(--dl,0s);}
+    @keyframes pFloat{0%,100%{transform:translate(0,0);opacity:var(--op,.3)}50%{transform:translate(var(--tx,10px),var(--ty,-15px));opacity:calc(var(--op,.3)*1.8)}}
+
+    /* ════════ PHASE 2: INTRO SLIDES ════════ */
+    #phaseIntro{position:fixed;inset:0;z-index:90;background:#0a0a0f;display:none;flex-direction:column;}
+    #phaseIntro.active{display:flex;}
+    #phaseIntro.exit{opacity:0;transform:translateY(-20px);transition:all 0.6s var(--ease);pointer-events:none;}
+
+    /* Progress bar top */
+    .intro-progress{position:absolute;top:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.05);z-index:10;}
+    .intro-progress-fill{height:100%;background:linear-gradient(90deg,var(--indigo),var(--cyan));border-radius:100px;transition:width 0.1s linear;}
+
+    /* Skip button */
+    .intro-skip{position:absolute;top:20px;right:20px;z-index:10;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:100px;padding:7px 16px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.5);cursor:pointer;font-family:'Outfit',sans-serif;transition:all 0.2s;}
+    .intro-skip:hover{background:rgba(255,255,255,0.1);color:white;}
+
+    /* Slide dots */
+    .intro-dots{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:10;}
+    .intro-dot{width:6px;height:6px;border-radius:100px;background:rgba(255,255,255,0.2);transition:all 0.4s var(--ease);}
+    .intro-dot.active{width:24px;background:var(--indigo);}
+
+    /* Slides container */
+    .slides-wrap{flex:1;position:relative;overflow:hidden;}
+    .slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 32px;opacity:0;transform:translateX(60px);transition:all 0.6s var(--ease);pointer-events:none;}
+    .slide.active{opacity:1;transform:translateX(0);pointer-events:all;}
+    .slide.prev{opacity:0;transform:translateX(-60px);}
+
+    /* Slide visual */
+    .slide-visual{position:relative;margin-bottom:40px;animation:none;}
+    .slide-icon-bg{width:120px;height:120px;border-radius:32px;display:flex;align-items:center;justify-content:center;font-size:52px;position:relative;}
+    .slide-icon-glow{position:absolute;inset:-20px;border-radius:52px;filter:blur(40px);opacity:0.35;}
+    .slide-icon-ring{position:absolute;inset:-16px;border-radius:48px;border:1px solid rgba(255,255,255,0.08);}
+    .slide-icon-ring2{position:absolute;inset:-28px;border-radius:60px;border:1px solid rgba(255,255,255,0.04);}
+
+    /* Floating mini elements around icon */
+    .slide-float{position:absolute;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:700;white-space:nowrap;animation:floatBounce 3s ease-in-out infinite;}
+    @keyframes floatBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+    .slide-title{font-size:26px;font-weight:900;letter-spacing:-0.8px;text-align:center;margin-bottom:12px;line-height:1.2;}
+    .slide-desc{font-size:15px;color:rgba(255,255,255,0.5);text-align:center;max-width:340px;line-height:1.75;}
+    .slide-hook{margin-top:20px;font-family:'Space Mono',monospace;font-size:11px;color:var(--indigo);letter-spacing:1px;text-align:center;padding:8px 20px;border:1px solid rgba(99,102,241,0.25);border-radius:100px;background:rgba(99,102,241,0.06);}
+
+    /* BG orbs per slide */
+    .slide-orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;opacity:0.12;}
+
+    /* ════════ PHASE 3: AUTH ════════ */
+    #phaseAuth{position:fixed;inset:0;z-index:80;display:none;align-items:stretch;overflow-y:auto;}
+    #phaseAuth.active{display:flex;}
+    #phaseAuth.enter{animation:authEnter 0.7s var(--ease) both;}
+    @keyframes authEnter{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+
+    .bg-orb{position:fixed;border-radius:50%;filter:blur(100px);animation:orbFloat 10s ease-in-out infinite;pointer-events:none;z-index:-1;}
+    .orb-1{width:500px;height:500px;background:rgba(99,102,241,0.1);top:-150px;left:-100px;}
+    .orb-2{width:400px;height:400px;background:rgba(6,182,212,0.07);bottom:-100px;right:-100px;animation-delay:-4s;}
+    .orb-3{width:200px;height:200px;background:rgba(212,175,55,0.04);top:40%;right:15%;animation-delay:-7s;}
+    @keyframes orbFloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(20px,-20px) scale(1.05)}66%{transform:translate(-10px,15px) scale(.97)}}
+
+    /* Left panel */
+    .auth-left{flex:1;display:none;flex-direction:column;align-items:center;justify-content:center;padding:60px;background:linear-gradient(135deg,rgba(99,102,241,0.07),rgba(6,182,212,0.03));border-right:1px solid rgba(255,255,255,0.04);position:relative;overflow:hidden;}
+    @media(min-width:900px){.auth-left{display:flex;}}
+    .orbit-ring{position:absolute;border-radius:50%;border:1px solid rgba(99,102,241,0.07);pointer-events:none;}
+    .left-tagline{font-size:34px;font-weight:900;line-height:1.2;letter-spacing:-1.5px;text-align:center;max-width:340px;margin-top:28px;}
+    .left-tagline span{color:var(--indigo);}
+    .left-sub{font-size:14px;color:rgba(255,255,255,0.4);text-align:center;max-width:300px;line-height:1.8;margin-top:14px;}
+    .left-features{margin-top:36px;display:flex;flex-direction:column;gap:12px;width:100%;max-width:280px;}
+    .left-feat{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);font-size:13px;color:rgba(255,255,255,0.6);}
+    .lfi{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;}
+
+    /* Right form */
+    .auth-right{width:100%;max-width:480px;display:flex;align-items:center;justify-content:center;padding:32px 20px;}
+    @media(min-width:900px){.auth-right{padding:60px 48px;}}
+    .auth-card{width:100%;max-width:400px;}
+    .auth-logo-row{display:flex;align-items:center;gap:14px;margin-bottom:36px;}
+    .auth-logo-box{width:54px;height:54px;background:#111118;border:1px solid rgba(99,102,241,0.25);border-radius:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px var(--indigo-glow);flex-shrink:0;overflow:hidden;position:relative;}
+    .auth-logo-box img{width:100%;height:100%;object-fit:contain;display:none;position:absolute;inset:0;}
+    .auth-logo-box img.loaded{display:block;}
+    .auth-logo-box .def-svg.hidden{opacity:0;}
+    .auth-logo-name{font-size:22px;font-weight:900;letter-spacing:-0.5px;}
+    .auth-logo-sub{font-family:'Space Mono',monospace;font-size:9px;color:var(--indigo);letter-spacing:3px;text-transform:uppercase;margin-top:2px;}
+    h1{font-size:26px;font-weight:800;letter-spacing:-0.5px;margin-bottom:6px;}
+    .sub{font-size:14px;color:rgba(255,255,255,0.4);margin-bottom:30px;line-height:1.6;}
+    .form-group{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;}
+    .form-label{font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.8px;}
+    .input-wrap{position:relative;}
+    .input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.2);width:16px;height:16px;pointer-events:none;}
+    .form-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:13px 14px 13px 44px;color:#f0f0f8;font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:all .2s;}
+    .form-input:focus{border-color:var(--indigo);box-shadow:0 0 0 3px var(--indigo-glow);background:rgba(99,102,241,0.04);}
+    .form-input::placeholder{color:rgba(255,255,255,0.18);}
+    .btn-submit{width:100%;padding:14px;background:linear-gradient(135deg,var(--indigo),#818cf8);color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;box-shadow:0 0 32px var(--indigo-glow),0 4px 16px rgba(0,0,0,.3);margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;}
+    .btn-submit:hover{transform:translateY(-2px);box-shadow:0 0 48px var(--indigo-glow),0 8px 24px rgba(0,0,0,.4);}
+    .divider{display:flex;align-items:center;gap:12px;margin:22px 0;color:rgba(255,255,255,0.18);font-size:12px;}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.06);}
+    .demo-hint{background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:12px;padding:13px 16px;font-size:12px;color:rgba(255,255,255,0.4);text-align:center;line-height:1.7;}
+    .demo-hint span{color:var(--indigo);font-family:'Space Mono',monospace;font-weight:700;}
+    .auth-footer{text-align:center;margin-top:22px;font-size:13px;color:rgba(255,255,255,0.3);}
+    .auth-footer a{color:var(--indigo);text-decoration:none;font-weight:700;}
+    .flash{padding:11px 14px;border-radius:10px;font-size:13px;margin-bottom:16px;background:rgba(244,63,94,0.08);color:#f87171;border:1px solid rgba(244,63,94,0.18);}
+    .eye-btn{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:0;display:flex;}
+    @media(max-width:480px){h1{font-size:22px;}.auth-right{padding:24px 16px;}}
+  </style>
+</head>
+<body>
+
+<!-- ════════ PHASE 1: SPLASH ════════ -->
+<div id="phaseSplash">
+  <div class="sp-particle" style="width:5px;height:5px;background:#6366f1;top:18%;left:12%;--d:5s;--tx:20px;--ty:-28px;--op:.5"></div>
+  <div class="sp-particle" style="width:7px;height:7px;background:#06b6d4;top:72%;left:82%;--d:6s;--dl:-2s;--tx:-18px;--ty:-22px;--op:.35"></div>
+  <div class="sp-particle" style="width:4px;height:4px;background:#10b981;top:38%;left:90%;--d:4.5s;--dl:-1s;--tx:-12px;--ty:16px;--op:.55"></div>
+  <div class="sp-particle" style="width:6px;height:6px;background:#d4af37;top:82%;left:18%;--d:7s;--dl:-3.5s;--tx:28px;--ty:-14px;--op:.4"></div>
+  <div class="sp-particle" style="width:4px;height:4px;background:#a855f7;top:12%;left:72%;--d:5.5s;--dl:-1.5s;--tx:-22px;--ty:22px;--op:.45"></div>
+
+  <div class="sp-logo-wrap">
+    <div class="sp-ring"></div>
+    <div class="sp-logo-bg">
+      <svg width="46" height="46" viewBox="0 0 100 100" fill="none">
+        <line x1="22" y1="72" x2="72" y2="22" stroke="white" stroke-width="8" stroke-linecap="round"/>
+        <polyline points="48,22 72,22 72,46" stroke="white" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M18,62 Q30,82 44,66 Q58,50 68,70" stroke="rgba(255,255,255,0.55)" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <circle cx="50" cy="50" r="6" fill="#a5b4fc"/>
+      </svg>
+    </div>
+  </div>
+  <div class="sp-name">Activity<span>OS</span></div>
+  <div class="sp-tagline">Enterprise Productivity · v2.0</div>
+  <div class="sp-bar"><div class="sp-bar-fill"></div></div>
+</div>
+
+<!-- ════════ PHASE 2: INTRO SLIDES ════════ -->
+<div id="phaseIntro">
+  <div class="intro-progress"><div class="intro-progress-fill" id="introProgressFill"></div></div>
+  <button class="intro-skip" onclick="skipIntro()">Lewati →</button>
+
+  <div class="slides-wrap" id="slidesWrap">
+
+    <!-- SLIDE 1: Daily Tasks -->
+    <div class="slide active" data-slide="0">
+      <div class="slide-orb" style="width:400px;height:400px;background:#6366f1;top:-100px;left:-100px"></div>
+      <div class="slide-visual">
+        <div class="slide-icon-ring2"></div>
+        <div class="slide-icon-ring"></div>
+        <div class="slide-icon-bg" style="background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(99,102,241,0.05));border:1px solid rgba(99,102,241,0.2)">
+          <div class="slide-icon-glow" style="background:#6366f1"></div>
+          <span>📋</span>
+        </div>
+        <div class="slide-float" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;top:-16px;right:-70px;animation-delay:0s">✅ 5/7 done</div>
+        <div class="slide-float" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.2);color:#6ee7b7;bottom:-10px;left:-60px;animation-delay:1.2s">🔥 7 hari streak</div>
+      </div>
+      <div class="slide-title">Daily Task Tracker</div>
+      <div class="slide-desc">Kelola semua tugas harianmu dengan prioritas, kategori, dan jadwal notifikasi cerdas — H-15, H-5, tepat waktu.</div>
+      <div class="slide-hook">"Satu task selesai = satu domino jatuh."</div>
+    </div>
+
+    <!-- SLIDE 2: Roadmap & Domino -->
+    <div class="slide" data-slide="1">
+      <div class="slide-orb" style="width:400px;height:400px;background:#06b6d4;bottom:-100px;right:-100px"></div>
+      <div class="slide-visual">
+        <div class="slide-icon-ring2"></div>
+        <div class="slide-icon-ring"></div>
+        <div class="slide-icon-bg" style="background:linear-gradient(135deg,rgba(6,182,212,0.15),rgba(6,182,212,0.05));border:1px solid rgba(6,182,212,0.2)">
+          <div class="slide-icon-glow" style="background:#06b6d4"></div>
+          <span>🗺️</span>
+        </div>
+        <div class="slide-float" style="background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.25);color:#67e8f9;top:-16px;right:-80px;animation-delay:0.3s">🁢 3/5 milestone</div>
+        <div class="slide-float" style="background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.25);color:#fde68a;bottom:-10px;left:-70px;animation-delay:1.5s">🏆 60% progress</div>
+      </div>
+      <div class="slide-title">Roadmap & Domino</div>
+      <div class="slide-desc">Visualisasikan goalmu sebagai domino. Setiap milestone selesai = satu domino jatuh, mendekatkanmu ke tujuan besar.</div>
+      <div class="slide-hook">"Jatuhkan domino pertamamu hari ini."</div>
+    </div>
+
+    <!-- SLIDE 3: ESQ Ritual -->
+    <div class="slide" data-slide="2">
+      <div class="slide-orb" style="width:350px;height:350px;background:#d4af37;top:-80px;right:-80px"></div>
+      <div class="slide-visual">
+        <div class="slide-icon-ring2"></div>
+        <div class="slide-icon-ring"></div>
+        <div class="slide-icon-bg" style="background:linear-gradient(135deg,rgba(212,175,55,0.15),rgba(212,175,55,0.05));border:1px solid rgba(212,175,55,0.2)">
+          <div class="slide-icon-glow" style="background:#d4af37"></div>
+          <span>✨</span>
+        </div>
+        <div class="slide-float" style="background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);color:#fde68a;top:-16px;right:-76px;animation-delay:0.6s">🌅 Pagi ritual</div>
+        <div class="slide-float" style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.25);color:#d8b4fe;bottom:-10px;left:-60px;animation-delay:1.8s">ESQ 87/100</div>
+      </div>
+      <div class="slide-title">ESQ Daily Ritual</div>
+      <div class="slide-desc">Ritual pagi & malam untuk keseimbangan emosional dan spiritual. Catat gratitude, intentions, dan ukur ESQ score harianmu.</div>
+      <div class="slide-hook">"Pagi yang baik menentukan malam yang tenang."</div>
+    </div>
+
+    <!-- SLIDE 4: Ghost of You -->
+    <div class="slide" data-slide="3">
+      <div class="slide-orb" style="width:380px;height:380px;background:#8b5cf6;bottom:-80px;left:-80px"></div>
+      <div class="slide-visual">
+        <div class="slide-icon-ring2"></div>
+        <div class="slide-icon-ring"></div>
+        <div class="slide-icon-bg" style="background:linear-gradient(135deg,rgba(139,92,246,0.15),rgba(139,92,246,0.05));border:1px solid rgba(139,92,246,0.2)">
+          <div class="slide-icon-glow" style="background:#8b5cf6"></div>
+          <span>👻</span>
+        </div>
+        <div class="slide-float" style="background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;top:-16px;right:-80px;animation-delay:0.9s">📈 Minggu ini</div>
+        <div class="slide-float" style="background:rgba(148,163,184,0.08);border:1px solid rgba(148,163,184,0.15);color:rgba(148,163,184,0.8);bottom:-10px;left:-68px;animation-delay:2.1s">👻 Minggu lalu</div>
+      </div>
+      <div class="slide-title">The Ghost of You</div>
+      <div class="slide-desc">Grafik bayangan dirimu dari minggu lalu. Bersaing melawan versi dirimu sendiri — bukan orang lain.</div>
+      <div class="slide-hook">"Jangan biarkan dirimu yang dulu lebih rajin."</div>
+    </div>
+
+    <!-- SLIDE 5: Smart Notifications -->
+    <div class="slide" data-slide="4">
+      <div class="slide-orb" style="width:360px;height:360px;background:#10b981;top:-80px;left:-80px"></div>
+      <div class="slide-visual">
+        <div class="slide-icon-ring2"></div>
+        <div class="slide-icon-ring"></div>
+        <div class="slide-icon-bg" style="background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(16,185,129,0.05));border:1px solid rgba(16,185,129,0.2)">
+          <div class="slide-icon-glow" style="background:#10b981"></div>
+          <span>🔔</span>
+        </div>
+        <div class="slide-float" style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);color:#6ee7b7;top:-20px;right:-90px;animation-delay:1.2s;font-size:10px">⏰ 5 menit lagi!</div>
+        <div class="slide-float" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);color:#fcd34d;bottom:-12px;left:-72px;animation-delay:2.4s;font-size:10px">🚀 Sekarang waktunya!</div>
+      </div>
+      <div class="slide-title">Notifikasi Cerdas</div>
+      <div class="slide-desc">Set jadwal task dan dapatkan notifikasi H-15, H-5, tepat waktu, dan reminder +15 menit jika belum selesai.</div>
+      <div class="slide-hook">"Satu keputusan pagi ini menentukan malammu."</div>
+    </div>
+
+  </div><!-- /slides-wrap -->
+
+  <div class="intro-dots" id="introDots">
+    <div class="intro-dot active"></div>
+    <div class="intro-dot"></div>
+    <div class="intro-dot"></div>
+    <div class="intro-dot"></div>
+    <div class="intro-dot"></div>
+  </div>
+</div>
+
+<!-- ════════ PHASE 3: AUTH ════════ -->
+<div id="phaseAuth">
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+
+  <!-- LEFT PANEL -->
+  <div class="auth-left">
+    <div class="orbit-ring" style="width:600px;height:600px;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+    <div class="orbit-ring" style="width:400px;height:400px;top:50%;left:50%;transform:translate(-50%,-50%);border-color:rgba(6,182,212,0.05)"></div>
+    <div style="width:96px;height:96px;background:rgba(255,255,255,0.03);border:1px solid rgba(99,102,241,0.2);border-radius:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 60px var(--indigo-glow)">
+      <svg width="54" height="54" viewBox="0 0 100 100" fill="none">
+        <line x1="22" y1="72" x2="72" y2="22" stroke="white" stroke-width="8" stroke-linecap="round"/>
+        <polyline points="48,22 72,22 72,46" stroke="white" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M18,62 Q30,82 44,66 Q58,50 68,70" stroke="rgba(255,255,255,0.5)" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <circle cx="50" cy="50" r="6" fill="#a5b4fc"/>
+      </svg>
+    </div>
+    <div class="left-tagline">Bangun <span>kebiasaan</span><br>yang mengubah hidupmu.</div>
+    <div class="left-sub">Track daily tasks, visualisasi goals, dan ukur ESQ — semua dalam satu platform.</div>
+    <div class="left-features">
+      <div class="left-feat"><div class="lfi" style="background:rgba(99,102,241,0.12)">📋</div><div>Daily task dengan jadwal & notifikasi cerdas</div></div>
+      <div class="left-feat"><div class="lfi" style="background:rgba(6,182,212,0.12)">🗺️</div><div>Roadmap goals dengan Domino Progress visual</div></div>
+      <div class="left-feat"><div class="lfi" style="background:rgba(212,175,55,0.12)">✨</div><div>ESQ ritual pagi & malam harian</div></div>
+      <div class="left-feat"><div class="lfi" style="background:rgba(16,185,129,0.12)">👻</div><div>Ghost chart — bersaing melawan dirimu sendiri</div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT FORM -->
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-logo-row">
+        <div class="auth-logo-box">
+          <img id="customLogoImg" alt="Logo">
+          <svg class="def-svg" id="defaultLogoSvg" width="30" height="30" viewBox="0 0 100 100" fill="none">
+            <line x1="22" y1="72" x2="72" y2="22" stroke="white" stroke-width="9" stroke-linecap="round"/>
+            <polyline points="48,22 72,22 72,46" stroke="white" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M18,62 Q30,82 44,66 Q58,50 68,70" stroke="rgba(255,255,255,0.55)" stroke-width="7" fill="none" stroke-linecap="round"/>
+            <circle cx="50" cy="50" r="6" fill="#a5b4fc"/>
+          </svg>
+        </div>
+        <div>
+          <div class="auth-logo-name">ActivityOS</div>
+          <div class="auth-logo-sub">Enterprise v2.0</div>
+        </div>
+      </div>
+
+      <h1>Welcome back 👋</h1>
+      <p class="sub">Masuk dan lanjutkan perjalanan produktivitasmu.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, msg in messages %}
+        <div class="flash" style="{% if 'terkunci' in msg.lower() or 'percobaan' in msg.lower() %}background:rgba(245,158,11,0.08);color:#fbbf24;border-color:rgba(245,158,11,0.25){% endif %}">
+          {{ '🔒' if 'terkunci' in msg.lower() or 'percobaan' in msg.lower() else '⚠️' }} {{ msg }}
+        </div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST" action="/login">
+        <div class="form-group">
+          <label class="form-label">Username / Email</label>
+          <div class="input-wrap">
+            <i data-lucide="user" class="input-icon"></i>
+            <input type="text" name="username" class="form-input" placeholder="admin" required autocomplete="username">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="input-wrap">
+            <i data-lucide="lock" class="input-icon"></i>
+            <input type="password" name="password" id="passInput" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="eye-btn" onclick="togglePass()" tabindex="-1">
+              <i data-lucide="eye" style="width:16px;height:16px" id="eyeIcon"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <i data-lucide="log-in" style="width:16px;height:16px"></i> Masuk Sekarang
+        </button>
+      </form>
+
+      <div class="divider">atau</div>
+      <div class="demo-hint">🎯 Demo &nbsp;·&nbsp; Username: <span>admin</span> &nbsp;·&nbsp; Password: <span>admin123</span></div>
+      <div class="auth-footer">Belum punya akun? <a href="/register">Daftar gratis →</a></div>
+    </div>
+  </div>
+</div>
+
+<script>
+lucide.createIcons();
+
+// ══════════════════════════════════
+// PHASE CONTROLLER
+// ══════════════════════════════════
+const SPLASH_DURATION  = 2600;  // ms
+const SLIDE_DURATION   = 3500;  // ms per slide (auto-play)
+const TOTAL_SLIDES     = 5;
+
+let currentSlide = 0;
+let slideTimer   = null;
+let progressTimer = null;
+let progressStart = null;
+
+// ── PHASE 1 → PHASE 2 ──
+setTimeout(() => {
+  const splash = document.getElementById('phaseSplash');
+  splash.classList.add('exit');
+  setTimeout(() => {
+    splash.style.display = 'none';
+    startIntro();
+  }, 700);
+}, SPLASH_DURATION);
+
+function startIntro() {
+  const intro = document.getElementById('phaseIntro');
+  intro.classList.add('active');
+  startSlideProgress();
+  slideTimer = setInterval(nextSlide, SLIDE_DURATION);
+}
+
+// ── SLIDE PROGRESS BAR ──
+function startSlideProgress() {
+  const fill = document.getElementById('introProgressFill');
+  const totalWidth = ((currentSlide + 1) / TOTAL_SLIDES) * 100;
+  const startWidth = (currentSlide / TOTAL_SLIDES) * 100;
+  fill.style.transition = 'none';
+  fill.style.width = startWidth + '%';
+
+  requestAnimationFrame(() => {
+    fill.style.transition = `width ${SLIDE_DURATION}ms linear`;
+    fill.style.width = totalWidth + '%';
+  });
+}
+
+// ── NEXT SLIDE ──
+function nextSlide() {
+  if (currentSlide >= TOTAL_SLIDES - 1) {
+    goToAuth();
+    return;
+  }
+  const slides = document.querySelectorAll('.slide');
+  slides[currentSlide].classList.remove('active');
+  slides[currentSlide].classList.add('prev');
+  currentSlide++;
+  slides[currentSlide].classList.add('active');
+
+  // Update dots
+  const dots = document.querySelectorAll('.intro-dot');
+  dots.forEach((d, i) => d.classList.toggle('active', i === currentSlide));
+
+  startSlideProgress();
+
+  // Remove prev class after animation
+  setTimeout(() => {
+    slides.forEach(s => s.classList.remove('prev'));
+  }, 700);
+}
+
+// ── SKIP ──
+function skipIntro() {
+  clearInterval(slideTimer);
+  goToAuth();
+}
+
+// ── PHASE 2 → PHASE 3 ──
+function goToAuth() {
+  clearInterval(slideTimer);
+  const fill = document.getElementById('introProgressFill');
+  fill.style.transition = 'width 0.4s ease';
+  fill.style.width = '100%';
+
+  setTimeout(() => {
+    const intro = document.getElementById('phaseIntro');
+    intro.classList.add('exit');
+    setTimeout(() => {
+      intro.style.display = 'none';
+      const auth = document.getElementById('phaseAuth');
+      auth.classList.add('active', 'enter');
+      // Load custom logo
+      const saved = localStorage.getItem('appLogoUrl');
+      if (saved) applyCustomLogo(saved);
+    }, 600);
+  }, 400);
+}
+
+// Swipe support on mobile
+let touchStartX = 0;
+document.getElementById('slidesWrap').addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+}, {passive:true});
+document.getElementById('slidesWrap').addEventListener('touchend', e => {
+  const diff = touchStartX - e.changedTouches[0].clientX;
+  if (Math.abs(diff) > 50) {
+    clearInterval(slideTimer);
+    nextSlide();
+    slideTimer = setInterval(nextSlide, SLIDE_DURATION);
+  }
+}, {passive:true});
+
+// ══════════════════════════════════
+// AUTH HELPERS
+// ══════════════════════════════════
+function togglePass() {
+  const inp = document.getElementById('passInput');
+  const ico = document.getElementById('eyeIcon');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  ico.setAttribute('data-lucide', inp.type === 'password' ? 'eye' : 'eye-off');
+  lucide.createIcons();
+}
+
+function applyCustomLogo(url) {
+  const img = document.getElementById('customLogoImg');
+  const svg = document.getElementById('defaultLogoSvg');
+  if (!img || !url) return;
+  img.src = url;
+  img.onload = () => { img.classList.add('loaded'); if(svg) svg.classList.add('hidden'); };
+  img.onerror = () => localStorage.removeItem('appLogoUrl');
+}
+
+document.querySelector('form').addEventListener('submit', () => {
+  const btn = document.getElementById('submitBtn');
+  btn.innerHTML = '⏳ Masuk...';
+  btn.style.opacity = '0.75';
+});
+</script>
+</body>
+</html>

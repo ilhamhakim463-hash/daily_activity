@@ -1,0 +1,750 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+.fin-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;overflow-x:auto}
+.fin-tab{padding:10px 18px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all 0.2s;background:none;border-top:none;border-left:none;border-right:none;font-family:'Outfit',sans-serif}
+.fin-tab.active{color:var(--indigo);border-bottom-color:var(--indigo)}
+.fin-tab:hover{color:var(--text-primary)}
+.fin-section{display:none}.fin-section.active{display:block}
+
+/* Summary cards */
+.fin-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.fin-stat{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px}
+.fin-stat-label{font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.fin-stat-value{font-size:20px;font-weight:700;color:var(--text-primary)}
+.fin-stat-sub{font-size:11px;color:var(--text-muted);margin-top:3px}
+
+/* Saving goal card */
+.sav-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;position:relative;overflow:hidden}
+.sav-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--sav-color,#10b981);border-radius:4px 0 0 4px}
+.sav-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.sav-emoji{font-size:22px}
+.sav-info{flex:1;min-width:0}
+.sav-title{font-size:14px;font-weight:600;color:var(--text-primary)}
+.sav-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.sav-progress{margin-bottom:10px}
+.sav-bar-wrap{background:var(--bg-elevated);border-radius:4px;height:6px;overflow:hidden;margin-bottom:6px}
+.sav-bar{height:6px;border-radius:4px;transition:width 0.8s ease}
+.sav-pct-row{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted)}
+.sav-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn-deposit{background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif}
+.btn-sm{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:'Outfit',sans-serif}
+.btn-sm:hover{background:var(--bg-overlay);color:var(--text-primary)}
+
+/* Investment card */
+.inv-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+.inv-emoji{font-size:24px;flex-shrink:0}
+.inv-body{flex:1;min-width:0}
+.inv-title{font-size:13px;font-weight:600;color:var(--text-primary)}
+.inv-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.inv-pnl{text-align:right;flex-shrink:0}
+.inv-pnl-val{font-size:14px;font-weight:700}
+.inv-pnl-pct{font-size:11px;margin-top:2px}
+.pnl-pos{color:#10b981}.pnl-neg{color:#f43f5e}
+
+/* Expense card */
+.exp-card{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px}
+.exp-emoji{font-size:20px;flex-shrink:0}
+.exp-info{flex:1;min-width:0}
+.exp-title{font-size:13px;font-weight:600;color:var(--text-primary)}
+.exp-cat{font-size:11px;color:var(--text-muted);margin-top:1px}
+.exp-amount{font-size:13px;font-weight:700;color:var(--text-primary);white-space:nowrap}
+
+/* XP bar */
+.xp-bar-wrap{background:var(--bg-elevated);border-radius:100px;height:8px;overflow:hidden;margin:6px 0}
+.xp-bar{height:8px;border-radius:100px;background:linear-gradient(90deg,#6366f1,#06b6d4);transition:width 0.8s}
+
+/* Focus card */
+.focus-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;transition:all 0.2s}
+.focus-card.done{opacity:0.5}
+.focus-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--indigo);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;transition:all 0.2s}
+.focus-check.done{background:var(--indigo);border-color:var(--indigo)}
+.focus-source{display:inline-block;font-size:10px;padding:2px 7px;border-radius:6px;background:var(--indigo-glow);color:var(--indigo);font-weight:600;margin-bottom:4px}
+
+/* Form modal */
+.field-label{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+@media(max-width:480px){.form-row-2{grid-template-columns:1fr}.fin-summary{grid-template-columns:1fr 1fr}}
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<div style="display:flex;gap:8px">
+  <button class="btn btn-ghost" onclick="openModal('addExpenseModal')" style="padding:7px 12px;font-size:12px">+ Pengeluaran</button>
+  <button class="btn btn-primary" onclick="showAddForm()" style="padding:7px 12px;font-size:12px" id="addMainBtn">+ Tambah</button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="page-content page-transition">
+  <div class="page-header">
+    <h1 class="page-title">💰 Finansial</h1>
+    <p class="page-subtitle">Tabungan, investasi, dan pengeluaran rutin</p>
+  </div>
+
+  <!-- XP Level Bar -->
+  <div class="card animate-fade-up" style="margin-bottom:16px;padding:12px 16px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,{{ xp_info.color }},{{ xp_info.color }}88);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">{{ xp_info.level }}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+          <span style="font-size:13px;font-weight:600;color:var(--text-primary)">Lv.{{ xp_info.level }} {{ xp_info.title }}</span>
+          <span style="font-size:11px;color:var(--text-muted)">{{ xp_info.total_xp }} XP</span>
+        </div>
+        <div class="xp-bar-wrap"><div class="xp-bar" style="width:{{ xp_info.pct }}%"></div></div>
+        <div style="font-size:10px;color:var(--text-muted)">{{ xp_info.xp_to_next }} XP lagi ke level {{ xp_info.level + 1 }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="fin-tabs">
+    <button class="fin-tab active" onclick="switchTab('savings',this)">💰 Tabungan</button>
+    <button class="fin-tab" onclick="switchTab('investments',this)">📈 Investasi</button>
+    <button class="fin-tab" onclick="switchTab('expenses',this)">💳 Pengeluaran Tetap</button>
+    <button class="fin-tab" onclick="switchTab('focus',this)">🎯 Daily Focus</button>
+  </div>
+
+  <!-- ═══ TABUNGAN ═══ -->
+  <div id="sec-savings" class="fin-section active">
+    <!-- Summary -->
+    <div class="fin-summary">
+      <div class="fin-stat">
+        <div class="fin-stat-label">Total Terkumpul</div>
+        <div class="fin-stat-value" id="totalSaved">Rp 0</div>
+        <div class="fin-stat-sub">dari semua goal</div>
+      </div>
+      <div class="fin-stat">
+        <div class="fin-stat-label">Goal Aktif</div>
+        <div class="fin-stat-value">{{ savings.total_goals }}</div>
+        <div class="fin-stat-sub">tabungan berjalan</div>
+      </div>
+      <div class="fin-stat">
+        <div class="fin-stat-label">Streak Terbaik</div>
+        <div class="fin-stat-value" id="bestSavStreak">—</div>
+        <div class="fin-stat-sub">minggu berturut-turut</div>
+      </div>
+    </div>
+
+    <div id="savingsForm" style="display:none;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:16px">
+      <h4 style="margin-bottom:14px;font-size:14px">➕ <span id="savFormTitle">Tambah Target Tabungan</span></h4>
+      <input type="hidden" id="savEditId">
+      <div class="form-row-2">
+        <div><div class="field-label">Nama Tabungan</div><input class="form-input" id="savTitle" placeholder="Contoh: Beli Laptop"></div>
+        <div><div class="field-label">Emoji</div><input class="form-input" id="savEmoji" value="💰" maxlength="4" style="font-size:18px;width:80px"></div>
+      </div>
+      <div class="form-row-2">
+        <div><div class="field-label">Target Jumlah</div><input class="form-input" type="number" id="savTarget" placeholder="8000000" min="0"></div>
+        <div><div class="field-label">Mata Uang</div>
+          <select class="form-select" id="savCurrency">
+            {% for cur in currencies %}<option value="{{ cur.code }}">{{ cur.code }} — {{ cur.symbol }} {{ cur.name }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div><div class="field-label">Setoran Per Periode</div><input class="form-input" type="number" id="savPeriodAmt" placeholder="500000" min="0"></div>
+        <div><div class="field-label">Periode</div>
+          <select class="form-select" id="savPeriod">
+            <option value="weekly">Mingguan</option>
+            <option value="monthly">Bulanan</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div><div class="field-label">Mulai Tanggal</div><input class="form-input" type="date" id="savStart"></div>
+        <div><div class="field-label">Target Selesai (opsional)</div><input class="form-input" type="date" id="savTargetDate"></div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div class="field-label">Link ke Goal (opsional)</div>
+        <select class="form-select" id="savGoalLink">
+          <option value="">— Tidak terhubung ke goal —</option>
+          {% for g in goals %}<option value="{{ g.id }}">{{ g.icon }} {{ g.title }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <input type="checkbox" id="savCreateReminder" style="width:16px;height:16px;accent-color:#6366f1">
+        <label for="savCreateReminder" style="font-size:12px;color:var(--text-secondary);cursor:pointer">Buat reminder otomatis untuk setor tabungan ini</label>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('savingsForm').style.display='none'" class="btn btn-ghost" style="flex:1">Batal</button>
+        <button onclick="saveSavingsGoal()" class="btn btn-primary" style="flex:2" id="savSaveBtn">Simpan</button>
+      </div>
+    </div>
+
+    <div id="savingsList">
+      {% if savings.goals %}
+        {% for g in savings.goals %}
+        <div class="sav-card" id="savCard-{{ g.id }}" style="--sav-color:{{ g.color }}">
+          <div class="sav-header">
+            <div class="sav-emoji">{{ g.emoji }}</div>
+            <div class="sav-info">
+              <div class="sav-title">{{ g.title }}</div>
+              <div class="sav-meta">
+                Target: {{ g.currency }} {{ '{:,.0f}'.format(g.target_amount) }}
+                {% if g.streak > 0 %}
+                · <span style="color:{{ g.tier_color }}">{{ g.streak }} minggu streak</span>
+                {% endif %}
+                {% if g.goal_id %}· 🎯 Terhubung ke goal{% endif %}
+              </div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn-sm" onclick="openEditSavings({{ g.id }})">✏️</button>
+              <button class="btn-sm" onclick="deleteSavings({{ g.id }})" style="color:var(--rose)">🗑</button>
+            </div>
+          </div>
+          <div class="sav-progress">
+            <div class="sav-bar-wrap">
+              <div class="sav-bar" style="width:{{ g.pct }}%;background:{{ g.color }}"></div>
+            </div>
+            <div class="sav-pct-row">
+              <span>{{ g.currency }} {{ '{:,.0f}'.format(g.saved_idr) }} ({{ g.pct }}%)</span>
+              <span>Target: {{ g.currency }} {{ '{:,.0f}'.format(g.target_amount) }}</span>
+            </div>
+          </div>
+          <div class="sav-actions">
+            <button class="btn-deposit" onclick="openDeposit({{ g.id }}, '{{ g.title }}', '{{ g.currency }}')">+ Setor</button>
+            <button class="btn-sm" onclick="showSavLogs({{ g.id }})">📋 Riwayat</button>
+          </div>
+          <div id="savLogs-{{ g.id }}" style="display:none;margin-top:10px"></div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="text-align:center;padding:40px;color:var(--text-muted)">
+          <div style="font-size:40px;margin-bottom:12px">💰</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:6px">Belum ada target tabungan</div>
+          <div style="font-size:12px">Mulai dengan klik "+ Tambah" di atas</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ═══ INVESTASI ═══ -->
+  <div id="sec-investments" class="fin-section">
+    <div class="fin-summary">
+      <div class="fin-stat">
+        <div class="fin-stat-label">Total Modal</div>
+        <div class="fin-stat-value">Rp {{ '{:,.0f}'.format(portfolio.total_modal) }}</div>
+      </div>
+      <div class="fin-stat">
+        <div class="fin-stat-label">Nilai Sekarang</div>
+        <div class="fin-stat-value">Rp {{ '{:,.0f}'.format(portfolio.total_nilai) }}</div>
+      </div>
+      <div class="fin-stat">
+        <div class="fin-stat-label">Profit / Rugi</div>
+        <div class="fin-stat-value {{ 'pnl-pos' if portfolio.total_pnl >= 0 else 'pnl-neg' }}">
+          {{ '+' if portfolio.total_pnl >= 0 else '' }}{{ portfolio.total_pnl_pct }}%
+        </div>
+        <div class="fin-stat-sub">Rp {{ '{:,.0f}'.format(portfolio.total_pnl) }}</div>
+      </div>
+    </div>
+
+    <div id="invForm" style="display:none;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:16px">
+      <h4 style="margin-bottom:14px;font-size:14px">➕ Tambah Investasi</h4>
+      <div class="form-row-2">
+        <div><div class="field-label">Nama Aset</div><input class="form-input" id="invTitle" placeholder="Reksa Dana XYZ"></div>
+        <div><div class="field-label">Tipe</div>
+          <select class="form-select" id="invType" onchange="setInvEmoji()">
+            <option value="reksa_dana">📦 Reksa Dana</option>
+            <option value="saham">📊 Saham</option>
+            <option value="emas">🥇 Emas</option>
+            <option value="crypto">🪙 Crypto</option>
+            <option value="deposito">🏦 Deposito</option>
+            <option value="obligasi">📋 Obligasi</option>
+            <option value="property">🏠 Properti</option>
+            <option value="lainnya">📈 Lainnya</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div><div class="field-label">Harga Beli per Unit</div><input class="form-input" type="number" id="invBuyPrice" placeholder="10000" min="0" step="any"></div>
+        <div><div class="field-label">Jumlah Unit</div><input class="form-input" type="number" id="invUnits" placeholder="100" min="0" step="any" value="1"></div>
+      </div>
+      <div class="form-row-2">
+        <div><div class="field-label">Mata Uang</div>
+          <select class="form-select" id="invCurrency">
+            {% for cur in currencies %}<option value="{{ cur.code }}">{{ cur.code }} — {{ cur.symbol }}</option>{% endfor %}
+          </select>
+        </div>
+        <div><div class="field-label">Tanggal Beli</div><input class="form-input" type="date" id="invBuyDate"></div>
+      </div>
+      <div class="form-row-2">
+        <div><div class="field-label">Platform / Broker</div><input class="form-input" id="invPlatform" placeholder="Bibit, Stockbit, dll"></div>
+        <div><div class="field-label">Link ke Goal</div>
+          <select class="form-select" id="invGoalLink">
+            <option value="">— Tidak terhubung —</option>
+            {% for g in goals %}<option value="{{ g.id }}">{{ g.icon }} {{ g.title }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('invForm').style.display='none'" class="btn btn-ghost" style="flex:1">Batal</button>
+        <button onclick="saveInvestment()" class="btn btn-primary" style="flex:2">Simpan</button>
+      </div>
+    </div>
+
+    <div id="investmentsList">
+      {% if portfolio.investments %}
+        {% for inv in portfolio.investments %}
+        <div class="inv-card" id="invCard-{{ inv.id }}">
+          <div class="inv-emoji">{{ inv.emoji }}</div>
+          <div class="inv-body">
+            <div class="inv-title">{{ inv.title }}</div>
+            <div class="inv-meta">
+              {{ inv.currency }} {{ '{:,.2f}'.format(inv.buy_price) }} × {{ inv.units }} unit
+              {% if inv.platform %} · {{ inv.platform }}{% endif %}
+            </div>
+          </div>
+          <div class="inv-pnl">
+            <div class="inv-pnl-val {{ 'pnl-pos' if inv.pnl_pct >= 0 else 'pnl-neg' }}">
+              {{ '+' if inv.pnl_pct >= 0 else '' }}{{ inv.pnl_pct }}%
+            </div>
+            <div class="inv-pnl-pct {{ 'pnl-pos' if inv.pnl_idr >= 0 else 'pnl-neg' }}" style="font-size:10px">
+              {{ '+' if inv.pnl_idr >= 0 else '' }}Rp {{ '{:,.0f}'.format(inv.pnl_idr) }}
+            </div>
+            <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end">
+              <button class="btn-sm" onclick="openUpdatePrice({{ inv.id }}, '{{ inv.title }}', {{ inv.current_price }})">📊 Update</button>
+              <button class="btn-sm" onclick="deleteInvestment({{ inv.id }})" style="color:var(--rose)">🗑</button>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="text-align:center;padding:40px;color:var(--text-muted)">
+          <div style="font-size:40px;margin-bottom:12px">📈</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:6px">Belum ada investasi</div>
+          <div style="font-size:12px">Catat reksa dana, saham, emas, crypto, atau deposito</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ═══ PENGELUARAN TETAP ═══ -->
+  <div id="sec-expenses" class="fin-section">
+    {% set total_exp = expenses | sum(attribute='amount') %}
+    <div class="fin-summary">
+      <div class="fin-stat">
+        <div class="fin-stat-label">Total Per Bulan</div>
+        <div class="fin-stat-value">Rp {{ '{:,.0f}'.format(total_exp) }}</div>
+      </div>
+      <div class="fin-stat">
+        <div class="fin-stat-label">Jumlah Item</div>
+        <div class="fin-stat-value">{{ expenses|length }}</div>
+      </div>
+    </div>
+    {% if expenses %}
+      {% for e in expenses %}
+      <div class="exp-card" id="expCard-{{ e.id }}">
+        <div class="exp-emoji">{{ e.emoji }}</div>
+        <div class="exp-info">
+          <div class="exp-title">{{ e.title }}</div>
+          <div class="exp-cat">{{ e.category|title }} · Tgl {{ e.billing_day }} tiap bulan</div>
+        </div>
+        <div style="text-align:right">
+          <div class="exp-amount">{{ e.symbol or 'Rp' }} {{ '{:,.0f}'.format(e.amount) }}</div>
+          <button class="btn-sm" onclick="deleteExpense({{ e.id }})" style="margin-top:4px;color:var(--rose)">Hapus</button>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div style="text-align:center;padding:40px;color:var(--text-muted)">
+        <div style="font-size:40px;margin-bottom:12px">💳</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px">Belum ada pengeluaran tetap</div>
+        <div style="font-size:12px">Catat kos, listrik, langganan, dll</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- ═══ DAILY FOCUS ═══ -->
+  <div id="sec-focus" class="fin-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary)">3 Prioritas Hari Ini</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Dari deadline, streak, dan tabungan</div>
+      </div>
+      <button onclick="regenFocus()" class="btn btn-ghost" style="font-size:11px;padding:6px 10px">🔄 Refresh</button>
+    </div>
+    <div id="focusList">
+      <div class="skeleton" style="height:64px;border-radius:10px;margin-bottom:8px"></div>
+      <div class="skeleton" style="height:64px;border-radius:10px;margin-bottom:8px"></div>
+      <div class="skeleton" style="height:64px;border-radius:10px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DEPOSIT MODAL -->
+<div class="modal-overlay" id="depositModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-handle"></div>
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">💵 Setor Tabungan</h3>
+    <input type="hidden" id="depositSavId">
+    <div style="margin-bottom:12px">
+      <div class="field-label">Nama Tabungan</div>
+      <div id="depositName" style="font-size:13px;font-weight:600;color:var(--indigo);padding:6px 0"></div>
+    </div>
+    <div class="form-row-2" style="margin-bottom:12px">
+      <div><div class="field-label">Jumlah</div><input class="form-input" type="number" id="depositAmt" placeholder="500000" min="0"></div>
+      <div><div class="field-label">Mata Uang</div>
+        <select class="form-select" id="depositCur">
+          {% for cur in currencies %}<option value="{{ cur.code }}">{{ cur.code }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:12px"><div class="field-label">Tanggal</div><input class="form-input" type="date" id="depositDate"></div>
+    <div style="margin-bottom:16px"><div class="field-label">Catatan (opsional)</div><input class="form-input" id="depositNote" placeholder="Transfer dari rekening..."></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="closeModal('depositModal')" class="btn btn-ghost" style="flex:1">Batal</button>
+      <button onclick="submitDeposit()" class="btn btn-primary" style="flex:2">Simpan Setoran</button>
+    </div>
+  </div>
+</div>
+
+<!-- UPDATE PRICE MODAL -->
+<div class="modal-overlay" id="updatePriceModal">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-handle"></div>
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">📊 Update Harga</h3>
+    <input type="hidden" id="updatePriceInvId">
+    <div style="margin-bottom:12px">
+      <div class="field-label">Nama Aset</div>
+      <div id="updatePriceName" style="font-size:13px;font-weight:600;color:var(--indigo);padding:6px 0"></div>
+    </div>
+    <div style="margin-bottom:16px"><div class="field-label">Harga Sekarang per Unit</div><input class="form-input" type="number" id="updatePriceVal" min="0" step="any"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="closeModal('updatePriceModal')" class="btn btn-ghost" style="flex:1">Batal</button>
+      <button onclick="submitUpdatePrice()" class="btn btn-primary" style="flex:2">Update</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD EXPENSE MODAL -->
+<div class="modal-overlay" id="addExpenseModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700">💳 Tambah Pengeluaran Tetap</h3>
+      <button onclick="closeModal('addExpenseModal')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:20px">×</button>
+    </div>
+    <div class="form-row-2" style="margin-bottom:12px">
+      <div><div class="field-label">Nama</div><input class="form-input" id="expTitle" placeholder="Kos, Listrik, Netflix..."></div>
+      <div><div class="field-label">Emoji</div><input class="form-input" id="expEmoji" value="💳" maxlength="4" style="font-size:18px;width:80px"></div>
+    </div>
+    <div class="form-row-2" style="margin-bottom:12px">
+      <div><div class="field-label">Jumlah</div><input class="form-input" type="number" id="expAmount" placeholder="800000"></div>
+      <div><div class="field-label">Mata Uang</div>
+        <select class="form-select" id="expCurrency">
+          {% for cur in currencies %}<option value="{{ cur.code }}">{{ cur.code }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-row-2" style="margin-bottom:16px">
+      <div><div class="field-label">Kategori</div>
+        <select class="form-select" id="expCategory">
+          <option value="hunian">🏠 Hunian</option>
+          <option value="transportasi">🚗 Transportasi</option>
+          <option value="pendidikan">🎓 Pendidikan</option>
+          <option value="kesehatan">💊 Kesehatan</option>
+          <option value="langganan">📱 Langganan</option>
+          <option value="lainnya">📦 Lainnya</option>
+        </select>
+      </div>
+      <div><div class="field-label">Tanggal Tagih</div><input class="form-input" type="number" id="expBillingDay" value="1" min="1" max="31"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button onclick="closeModal('addExpenseModal')" class="btn btn-ghost" style="flex:1">Batal</button>
+      <button onclick="saveExpense()" class="btn btn-primary" style="flex:2">Simpan</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let _activeTab = 'savings';
+let _savEditId = null;
+
+// ── TAB SWITCH ──
+function switchTab(name, btn) {
+  _activeTab = name;
+  document.querySelectorAll('.fin-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.fin-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('addMainBtn').textContent =
+    name==='savings' ? '+ Tambah Tabungan' :
+    name==='investments' ? '+ Tambah Investasi' : '+ Tambah';
+  document.getElementById('addMainBtn').style.display =
+    name==='expenses' || name==='focus' ? 'none' : '';
+  if (name === 'focus') loadFocus();
+}
+
+function showAddForm() {
+  if (_activeTab === 'savings') {
+    _savEditId = null;
+    document.getElementById('savFormTitle').textContent = 'Tambah Target Tabungan';
+    document.getElementById('savSaveBtn').textContent = 'Simpan';
+    document.getElementById('savEditId').value = '';
+    document.getElementById('savTitle').value = '';
+    document.getElementById('savTarget').value = '';
+    document.getElementById('savPeriodAmt').value = '';
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('savStart').value = today;
+    document.getElementById('savTargetDate').value = '';
+    const f = document.getElementById('savingsForm');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  } else if (_activeTab === 'investments') {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('invBuyDate').value = today;
+    const f = document.getElementById('invForm');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', () => {
+  calcSavingsSummary();
+});
+
+function calcSavingsSummary() {
+  const goals = {{ savings.goals | tojson }};
+  let totalSaved = 0;
+  let bestStreak = 0;
+  goals.forEach(g => {
+    totalSaved += g.saved_idr || 0;
+    if ((g.streak || 0) > bestStreak) bestStreak = g.streak;
+  });
+  const el = document.getElementById('totalSaved');
+  if (el) el.textContent = 'Rp ' + Math.round(totalSaved).toLocaleString('id-ID');
+  const streakEl = document.getElementById('bestSavStreak');
+  if (streakEl) streakEl.textContent = bestStreak > 0 ? bestStreak + ' minggu' : '—';
+}
+
+// ── SAVINGS ──
+async function saveSavingsGoal() {
+  const title = document.getElementById('savTitle').value.trim();
+  const target = parseFloat(document.getElementById('savTarget').value);
+  if (!title || !target) return showToast('Nama dan target wajib diisi', 'error');
+
+  const editId = document.getElementById('savEditId').value;
+  const payload = {
+    title,
+    emoji       : document.getElementById('savEmoji').value,
+    target_amount: target,
+    currency    : document.getElementById('savCurrency').value,
+    period      : document.getElementById('savPeriod').value,
+    period_amount: parseFloat(document.getElementById('savPeriodAmt').value) || 0,
+    start_date  : document.getElementById('savStart').value,
+    target_date : document.getElementById('savTargetDate').value || null,
+    goal_id     : document.getElementById('savGoalLink').value || null,
+    create_reminder: document.getElementById('savCreateReminder').checked,
+  };
+
+  const url    = editId ? '/api/savings/' + editId : '/api/savings';
+  const method = editId ? 'PUT' : 'POST';
+  const res    = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const data   = await res.json();
+  if (!res.ok) return showToast(data.error || 'Gagal menyimpan', 'error');
+
+  showToast(editId ? '✅ Tabungan diperbarui' : '✅ Target tabungan dibuat!', 'success');
+  document.getElementById('savingsForm').style.display = 'none';
+  setTimeout(() => location.reload(), 800);
+}
+
+function openEditSavings(id) {
+  _savEditId = id;
+  document.getElementById('savEditId').value = id;
+  document.getElementById('savFormTitle').textContent = 'Edit Target Tabungan';
+  document.getElementById('savSaveBtn').textContent = 'Simpan Perubahan';
+  document.getElementById('savingsForm').style.display = 'block';
+  document.getElementById('savingsForm').scrollIntoView({ behavior:'smooth' });
+}
+
+async function deleteSavings(id) {
+  if (!confirm('Hapus goal tabungan ini? Semua riwayat setoran juga akan terhapus.')) return;
+  const res = await fetch('/api/savings/' + id, { method: 'DELETE' });
+  if (res.ok) { showToast('Tabungan dihapus', 'info'); setTimeout(() => location.reload(), 600); }
+}
+
+function openDeposit(id, name, currency) {
+  document.getElementById('depositSavId').value = id;
+  document.getElementById('depositName').textContent = name;
+  document.getElementById('depositDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('depositAmt').value = '';
+  document.getElementById('depositNote').value = '';
+  // Set currency
+  const sel = document.getElementById('depositCur');
+  if (sel) for (let i=0; i<sel.options.length; i++) {
+    if (sel.options[i].value === currency) { sel.selectedIndex = i; break; }
+  }
+  openModal('depositModal');
+}
+
+async function submitDeposit() {
+  const id  = document.getElementById('depositSavId').value;
+  const amt = parseFloat(document.getElementById('depositAmt').value);
+  if (!amt || amt <= 0) return showToast('Masukkan jumlah yang valid', 'error');
+
+  const res  = await fetch('/api/savings/' + id + '/deposit', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      amount   : amt,
+      currency : document.getElementById('depositCur').value,
+      log_date : document.getElementById('depositDate').value,
+      note     : document.getElementById('depositNote').value,
+    })
+  });
+  const data = await res.json();
+  if (data.ok) {
+    showToast('✅ Setoran berhasil dicatat!', 'success');
+    closeModal('depositModal');
+    setTimeout(() => location.reload(), 700);
+  } else {
+    showToast(data.error || 'Gagal menyimpan', 'error');
+  }
+}
+
+async function showSavLogs(id) {
+  const el = document.getElementById('savLogs-' + id);
+  if (el.style.display === 'block') { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:4px">Memuat...</div>';
+  const res  = await fetch('/api/savings/' + id + '/logs');
+  const logs = await res.json();
+  if (!logs.length) { el.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:4px">Belum ada riwayat setoran</div>'; return; }
+  el.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600">RIWAYAT SETORAN</div>' +
+    logs.map(l => '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">' +
+      '<span>' + l.log_date + (l.note ? ' · ' + l.note : '') + '</span>' +
+      '<span style="font-weight:600;color:' + (l.type==='withdrawal'?'#f43f5e':'#10b981') + '">' +
+      (l.type==='withdrawal'?'-':'+') + l.symbol + ' ' + parseFloat(l.amount).toLocaleString('id-ID') + '</span></div>'
+    ).join('');
+}
+
+// ── INVESTMENTS ──
+function setInvEmoji() {
+  const emap = { reksa_dana:'📦', saham:'📊', emas:'🥇', crypto:'🪙', deposito:'🏦', obligasi:'📋', property:'🏠', lainnya:'📈' };
+  document.getElementById('invTitle').placeholder = document.getElementById('invType').value;
+}
+
+async function saveInvestment() {
+  const title = document.getElementById('invTitle').value.trim();
+  const price = parseFloat(document.getElementById('invBuyPrice').value);
+  if (!title || !price) return showToast('Nama dan harga beli wajib', 'error');
+  const typeVal = document.getElementById('invType').value;
+  const emap = { reksa_dana:'📦', saham:'📊', emas:'🥇', crypto:'🪙', deposito:'🏦', obligasi:'📋', property:'🏠', lainnya:'📈' };
+  const res = await fetch('/api/investments', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      title, type: typeVal, emoji: emap[typeVal] || '📈',
+      buy_price: price,
+      units    : parseFloat(document.getElementById('invUnits').value) || 1,
+      currency : document.getElementById('invCurrency').value,
+      buy_date : document.getElementById('invBuyDate').value,
+      platform : document.getElementById('invPlatform').value,
+      goal_id  : document.getElementById('invGoalLink').value || null,
+    })
+  });
+  const data = await res.json();
+  if (data.ok) { showToast('✅ Investasi ditambahkan!', 'success'); setTimeout(() => location.reload(), 700); }
+  else showToast(data.error || 'Gagal menyimpan', 'error');
+}
+
+function openUpdatePrice(id, name, current) {
+  document.getElementById('updatePriceInvId').value = id;
+  document.getElementById('updatePriceName').textContent = name;
+  document.getElementById('updatePriceVal').value = current;
+  openModal('updatePriceModal');
+}
+
+async function submitUpdatePrice() {
+  const id    = document.getElementById('updatePriceInvId').value;
+  const price = parseFloat(document.getElementById('updatePriceVal').value);
+  if (!price || price <= 0) return showToast('Masukkan harga yang valid', 'error');
+  const res  = await fetch('/api/investments/' + id + '/update-price', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ price })
+  });
+  const data = await res.json();
+  if (data.ok) { showToast('✅ Harga diperbarui', 'success'); closeModal('updatePriceModal'); setTimeout(() => location.reload(), 700); }
+  else showToast(data.error || 'Gagal', 'error');
+}
+
+async function deleteInvestment(id) {
+  if (!confirm('Hapus investasi ini?')) return;
+  await fetch('/api/investments/' + id, { method:'DELETE' });
+  showToast('Investasi dihapus', 'info');
+  setTimeout(() => location.reload(), 600);
+}
+
+// ── EXPENSES ──
+async function saveExpense() {
+  const title = document.getElementById('expTitle').value.trim();
+  const amt   = parseFloat(document.getElementById('expAmount').value);
+  if (!title || !amt) return showToast('Nama dan jumlah wajib diisi', 'error');
+  const res = await fetch('/api/expenses', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      title, emoji: document.getElementById('expEmoji').value,
+      amount: amt, currency: document.getElementById('expCurrency').value,
+      category: document.getElementById('expCategory').value,
+      billing_day: parseInt(document.getElementById('expBillingDay').value) || 1,
+    })
+  });
+  const data = await res.json();
+  if (data.ok) { showToast('✅ Pengeluaran ditambahkan', 'success'); closeModal('addExpenseModal'); setTimeout(() => location.reload(), 700); }
+  else showToast(data.error || 'Gagal', 'error');
+}
+
+async function deleteExpense(id) {
+  if (!confirm('Hapus pengeluaran ini?')) return;
+  await fetch('/api/expenses/' + id, { method:'DELETE' });
+  showToast('Dihapus', 'info');
+  setTimeout(() => location.reload(), 600);
+}
+
+// ── DAILY FOCUS ──
+async function loadFocus() {
+  const el = document.getElementById('focusList');
+  try {
+    const res   = await fetch('/api/focus/today');
+    const items = await res.json();
+    if (!items.length) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><div style="font-size:36px;margin-bottom:12px">🎯</div><div style="font-size:13px">Tidak ada prioritas hari ini.<br>Klik Refresh untuk generate ulang.</div></div>';
+      return;
+    }
+    const srcLabel = { milestone_deadline:'📅 Deadline', streak_risk:'🔥 Streak Risk', task_overdue:'📋 Task', saving_due:'💰 Tabungan' };
+    el.innerHTML = items.map(item => '<div class="focus-card ' + (item.is_done ? 'done' : '') + '" id="fc-' + item.id + '">' +
+      '<div class="focus-check ' + (item.is_done ? 'done' : '') + '" onclick="checkFocus(' + item.id + ')">' +
+      (item.is_done ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : '') + '</div>' +
+      '<div style="flex:1">' +
+        '<div class="focus-source">' + (srcLabel[item.source] || item.source) + '</div>' +
+        '<div style="font-size:13px;font-weight:600;color:var(--text-primary);' + (item.is_done?'text-decoration:line-through;opacity:0.6':'') + '">' + item.title + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + (item.description || '') + '</div>' +
+      '</div></div>'
+    ).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--rose);padding:16px;font-size:12px">Gagal memuat prioritas</div>';
+  }
+}
+
+async function checkFocus(id) {
+  const res  = await fetch('/api/focus/' + id + '/done', { method:'POST' });
+  const data = await res.json();
+  if (data.ok) {
+    const card  = document.getElementById('fc-' + id);
+    const check = card ? card.querySelector('.focus-check') : null;
+    if (card)  card.classList.add('done');
+    if (check) {
+      check.classList.add('done');
+      check.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    }
+    showToast('✅ Prioritas selesai! +10 XP', 'success');
+  }
+}
+
+async function regenFocus() {
+  const el = document.getElementById('focusList');
+  el.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:12px">⏳ Generating...</div>';
+  await fetch('/api/focus/regenerate', { method:'POST' });
+  loadFocus();
+}
+</script>
+{% endblock %}

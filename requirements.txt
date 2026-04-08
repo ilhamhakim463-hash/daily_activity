@@ -1,0 +1,5 @@
+flask==3.0.0
+mysql-connector-python==8.2.0
+apscheduler==3.10.4
+pywebpush==2.0.0
+# Note: PBKDF2 password hashing uses built-in hashlib (no extra package)

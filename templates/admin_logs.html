@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Activity Log — ActivityOS Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:100vh;padding:20px}
+a{color:#818cf8;text-decoration:none}
+a:hover{text-decoration:underline}
+
+.topbar{display:flex;align-items:center;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+.back-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);border-radius:10px;color:#818cf8;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s}
+.back-btn:hover{background:rgba(99,102,241,0.22);color:#a5b4fc;text-decoration:none}
+.page-title{font-size:20px;font-weight:700;color:#f1f5f9}
+.page-sub{font-size:13px;color:#64748b;margin-top:2px}
+
+/* Filter bar */
+.filter-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end}
+.filter-group{display:flex;flex-direction:column;gap:4px}
+.filter-label{font-size:11px;color:#64748b;font-weight:500;text-transform:uppercase;letter-spacing:0.5px}
+.filter-input,.filter-select{background:#1e1e2e;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 12px;color:#e2e8f0;font-size:12px;font-family:'Outfit',sans-serif;outline:none;transition:border-color 0.2s}
+.filter-input:focus,.filter-select:focus{border-color:#6366f1}
+.filter-input{width:160px}
+.btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all 0.2s;font-family:'Outfit',sans-serif}
+.btn-primary{background:linear-gradient(135deg,#6366f1,#06b6d4);color:#fff}
+.btn-primary:hover{opacity:0.88}
+.btn-export{background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#10b981}
+.btn-export:hover{background:rgba(16,185,129,0.25)}
+.btn-clear{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#94a3b8}
+.btn-clear:hover{background:rgba(255,255,255,0.1)}
+
+/* Stats bar */
+.stats-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.stat-pill{background:#1e1e2e;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 14px;font-size:12px;color:#94a3b8}
+.stat-pill strong{color:#e2e8f0}
+
+/* Log list */
+.card{background:#1a1a2e;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden}
+.card-header{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.card-title{font-size:14px;font-weight:600;color:#f1f5f9}
+.log-count{font-size:12px;color:#64748b}
+
+.log-item{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s}
+.log-item:last-child{border-bottom:none}
+.log-item:hover{background:rgba(255,255,255,0.02)}
+.log-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.log-icon.success{background:rgba(16,185,129,0.12)}
+.log-icon.fail{background:rgba(244,63,94,0.12)}
+.log-icon.admin{background:rgba(99,102,241,0.12)}
+.log-body{flex:1;min-width:0}
+.log-action{font-size:13px;font-weight:500;color:#e2e8f0}
+.log-meta{font-size:11px;color:#64748b;margin-top:2px}
+.log-time{font-size:11px;color:#475569;white-space:nowrap;flex-shrink:0}
+.badge-action{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;margin-left:6px}
+.badge-success{background:rgba(16,185,129,0.15);color:#10b981}
+.badge-fail{background:rgba(244,63,94,0.15);color:#f43f5e}
+.badge-admin{background:rgba(99,102,241,0.15);color:#818cf8}
+
+/* Pagination */
+.pagination{display:flex;justify-content:center;align-items:center;gap:6px;padding:20px}
+.page-btn{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#94a3b8;font-family:'Outfit',sans-serif;transition:all 0.2s}
+.page-btn:hover{background:rgba(99,102,241,0.2);border-color:#6366f1;color:#a5b4fc}
+.page-btn.active{background:linear-gradient(135deg,#6366f1,#06b6d4);border-color:transparent;color:#fff}
+.page-btn:disabled{opacity:0.4;cursor:not-allowed}
+.page-info{font-size:12px;color:#64748b;padding:0 8px}
+
+.empty-state{text-align:center;padding:48px 20px;color:#475569}
+.empty-icon{font-size:40px;margin-bottom:12px}
+
+@media(max-width:600px){
+  .filter-bar{flex-direction:column}
+  .filter-input{width:100%}
+  body{padding:12px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/admin" class="back-btn">← Kembali ke Admin</a>
+  <div>
+    <div class="page-title">📋 Activity Log — Arsip Lengkap</div>
+    <div class="page-sub">Total {{ total_logs }} entri tersimpan</div>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<form method="GET" action="/admin/logs">
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label">Cari username</span>
+      <input class="filter-input" type="text" name="q" value="{{ q }}" placeholder="@username...">
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Tipe</span>
+      <select class="filter-select" name="type">
+        <option value="">Semua tipe</option>
+        <option value="login_success" {{ 'selected' if type=='login_success' }}>Login berhasil</option>
+        <option value="login_failed"  {{ 'selected' if type=='login_failed' }}>Login gagal</option>
+        <option value="admin"         {{ 'selected' if type=='admin' }}>Aksi admin</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Dari tanggal</span>
+      <input class="filter-input" type="date" name="date_from" value="{{ date_from }}">
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Sampai tanggal</span>
+      <input class="filter-input" type="date" name="date_to" value="{{ date_to }}">
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <button type="submit" class="btn btn-primary">🔍 Filter</button>
+      <a href="/admin/logs" class="btn btn-clear" style="display:inline-flex;align-items:center">✕ Reset</a>
+      <a href="/admin/logs/export?q={{ q }}&type={{ type }}&date_from={{ date_from }}&date_to={{ date_to }}"
+         class="btn btn-export">⬇ Export CSV</a>
+    </div>
+  </div>
+</form>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-pill">Total ditampilkan: <strong>{{ logs|length }}</strong></div>
+  <div class="stat-pill">Halaman <strong>{{ page }}</strong> dari <strong>{{ total_pages }}</strong></div>
+  {% if q or type or date_from or date_to %}
+  <div class="stat-pill" style="border-color:rgba(99,102,241,0.3);color:#818cf8">Filter aktif</div>
+  {% endif %}
+</div>
+
+<!-- Log List -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Log Aktivitas</span>
+    <span class="log-count">{{ (page-1)*per_page + 1 }}–{{ [(page)*per_page, total_filtered]|min }} dari {{ total_filtered }}</span>
+  </div>
+
+  {% if logs %}
+    {% for l in logs %}
+    <div class="log-item">
+      <div class="log-icon {{ 'success' if 'success' in l.action else ('fail' if 'fail' in l.action else 'admin') }}">
+        {{ '✅' if 'success' in l.action else ('❌' if 'fail' in l.action else '👑') }}
+      </div>
+      <div class="log-body">
+        <div class="log-action">
+          @{{ l.username or '?' }}
+          <span class="badge-action {{ 'badge-success' if 'success' in l.action else ('badge-fail' if 'fail' in l.action else 'badge-admin') }}">
+            {% if l.action=='login_success' %}Login berhasil
+            {% elif l.action=='login_failed' %}Login gagal
+            {% elif l.action=='admin_reset_password' %}Reset password
+            {% elif l.action=='admin_lock' %}Kunci akun
+            {% elif l.action=='admin_unlock' %}Buka kunci
+            {% elif l.action=='admin_promote' %}Promote admin
+            {% elif l.action=='admin_demote' %}Cabut admin
+            {% else %}{{ l.action }}{% endif %}
+          </span>
+        </div>
+        <div class="log-meta">
+          IP: {{ l.ip_address or '—' }}
+          {% if l.detail %} · {{ l.detail }}{% endif %}
+        </div>
+      </div>
+      <div class="log-time">{{ l.created_at[:16].replace('T',' ') if l.created_at else '—' }}</div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <div>Tidak ada log yang sesuai filter</div>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}
+  <a href="/admin/logs?q={{ q }}&type={{ type }}&date_from={{ date_from }}&date_to={{ date_to }}&page={{ page-1 }}"
+     class="page-btn">← Prev</a>
+  {% endif %}
+
+  {% for p in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+  <a href="/admin/logs?q={{ q }}&type={{ type }}&date_from={{ date_from }}&date_to={{ date_to }}&page={{ p }}"
+     class="page-btn {{ 'active' if p==page }}">{{ p }}</a>
+  {% endfor %}
+
+  {% if page < total_pages %}
+  <a href="/admin/logs?q={{ q }}&type={{ type }}&date_from={{ date_from }}&date_to={{ date_to }}&page={{ page+1 }}"
+     class="page-btn">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Rekap Harian — {{ date_str }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --indigo:#6366f1; --emerald:#10b981; --amber:#f59e0b; --rose:#f43f5e; --cyan:#06b6d4; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Outfit',sans-serif; background:#f8faff; color:#0f1730; line-height:1.6; }
+
+    .page { max-width:700px; margin:0 auto; padding:40px 32px; }
+
+    /* HEADER */
+    .report-header {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:32px; padding-bottom:24px;
+      border-bottom:2px solid #e4ecff;
+    }
+    .logo-mark { display:flex; align-items:center; gap:12px; }
+    .logo-icon { width:40px; height:40px; background:linear-gradient(135deg,var(--indigo),var(--cyan)); border-radius:12px; display:flex; align-items:center; justify-content:center; }
+    .logo-text { font-size:18px; font-weight:800; color:#0f1730; }
+    .logo-sub  { font-family:'Space Mono',monospace; font-size:9px; color:var(--indigo); letter-spacing:2px; text-transform:uppercase; }
+    .report-meta { text-align:right; }
+    .report-date { font-size:15px; font-weight:700; color:#0f1730; }
+    .report-user { font-size:12px; color:#4a5580; margin-top:2px; }
+
+    /* STAT STRIP */
+    .stat-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
+    .stat-box { background:white; border:1px solid #dde3f0; border-radius:12px; padding:14px; text-align:center; }
+    .stat-box-val { font-family:'Space Mono',monospace; font-size:24px; font-weight:700; line-height:1; }
+    .stat-box-lbl { font-size:10px; color:#4a5580; text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; }
+
+    /* MOOD */
+    .mood-row { display:flex; align-items:center; gap:12px; background:white; border:1px solid #dde3f0; border-radius:12px; padding:14px 18px; margin-bottom:28px; }
+    .mood-emoji { font-size:28px; }
+    .mood-text  { font-size:14px; font-weight:600; }
+    .mood-note  { font-size:12px; color:#4a5580; margin-top:2px; }
+
+    /* SECTION */
+    .section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:#8898bb; margin-bottom:12px; }
+
+    /* TASK LIST */
+    .task-row { display:flex; align-items:flex-start; gap:12px; padding:12px 14px; background:white; border:1px solid #dde3f0; border-radius:10px; margin-bottom:8px; }
+    .task-check { width:20px; height:20px; border-radius:5px; border:2px solid #dde3f0; flex-shrink:0; margin-top:2px; display:flex; align-items:center; justify-content:center; }
+    .task-check.done { background:var(--emerald); border-color:var(--emerald); }
+    .task-title { font-size:14px; font-weight:500; flex:1; }
+    .task-title.done { text-decoration:line-through; color:#8898bb; }
+    .task-meta { font-size:11px; color:#8898bb; margin-top:3px; display:flex; gap:8px; }
+    .priority-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+
+    .pill { display:inline-flex; align-items:center; padding:2px 8px; border-radius:100px; font-size:10px; font-weight:600; }
+    .pill-done   { background:rgba(16,185,129,0.1); color:var(--emerald); }
+    .pill-urgent { background:rgba(244,63,94,0.1); color:var(--rose); }
+    .pill-high   { background:rgba(245,158,11,0.1); color:var(--amber); }
+    .pill-medium { background:rgba(99,102,241,0.1); color:var(--indigo); }
+    .pill-low    { background:#f1f5f9; color:#8898bb; }
+
+    /* PROGRESS BAR */
+    .progress-wrap { margin-bottom:28px; }
+    .progress-label { display:flex; justify-content:space-between; font-size:12px; color:#4a5580; margin-bottom:6px; }
+    .progress-track { height:8px; background:#e4ecff; border-radius:100px; overflow:hidden; }
+    .progress-fill  { height:100%; background:linear-gradient(90deg,var(--indigo),var(--cyan)); border-radius:100px; }
+
+    /* FOOTER */
+    .report-footer { margin-top:40px; padding-top:20px; border-top:1px solid #e4ecff; display:flex; justify-content:space-between; align-items:center; }
+    .footer-text { font-size:11px; color:#8898bb; font-family:'Space Mono',monospace; }
+
+    /* PRINT */
+    .print-btn {
+      position:fixed; bottom:24px; right:24px;
+      background:var(--indigo); color:white;
+      border:none; border-radius:12px; padding:12px 20px;
+      font-size:13px; font-weight:700; cursor:pointer;
+      font-family:'Outfit',sans-serif;
+      display:flex; align-items:center; gap:8px;
+      box-shadow:0 4px 20px rgba(99,102,241,0.4);
+      transition:all 0.2s;
+    }
+    .print-btn:hover { transform:translateY(-2px); }
+    @media print {
+      .print-btn { display:none; }
+      body { background:white; }
+      .page { padding:20px; }
+    }
+
+    @media (max-width:500px) {
+      .stat-strip { grid-template-columns:1fr 1fr; }
+      .report-header { flex-direction:column; gap:12px; text-align:center; }
+      .report-meta { text-align:center; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="report-header">
+    <div class="logo-mark">
+      <div class="logo-icon">
+        <svg width="20" height="20" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <div>
+        <div class="logo-text">ActivityOS</div>
+        <div class="logo-sub">Daily Report</div>
+      </div>
+    </div>
+    <div class="report-meta">
+      <div class="report-date">{{ date_str }}</div>
+      <div class="report-user">{{ username }}</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stat-strip">
+    <div class="stat-box">
+      <div class="stat-box-val" style="color:var(--indigo)">{{ done }}</div>
+      <div class="stat-box-lbl">Selesai</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-box-val" style="color:#4a5580">{{ total }}</div>
+      <div class="stat-box-lbl">Total Task</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-box-val" style="color:var(--emerald)">{{ pct }}%</div>
+      <div class="stat-box-lbl">Progress</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-box-val" style="color:var(--amber)">{{ streak.current_streak or 0 }}</div>
+      <div class="stat-box-lbl">Streak 🔥</div>
+    </div>
+  </div>
+
+  <!-- PROGRESS BAR -->
+  <div class="progress-wrap">
+    <div class="progress-label">
+      <span>Produktivitas Hari Ini</span>
+      <span style="font-weight:700;color:var(--indigo)">{{ pct }}%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" style="width:{{ pct }}%"></div>
+    </div>
+  </div>
+
+  <!-- MOOD -->
+  {% if mood %}
+  <div class="mood-row">
+    <div class="mood-emoji">{{ mood.mood }}</div>
+    <div>
+      <div class="mood-text">Mood: {{ mood.mood_label }}</div>
+      {% if mood.note %}<div class="mood-note">"{{ mood.note }}"</div>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- TASKS -->
+  <div class="section-title">📋 Task Hari Ini ({{ total }} task)</div>
+
+  {% if tasks %}
+    {% for task in tasks %}
+    <div class="task-row">
+      <div class="task-check {{ 'done' if task.status=='done' else '' }}">
+        {% if task.status=='done' %}
+          <svg width="11" height="11" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        {% endif %}
+      </div>
+      <div class="priority-dot" style="background:
+        {{ '#f43f5e' if task.priority=='urgent' else '#f59e0b' if task.priority=='high' else '#6366f1' if task.priority=='medium' else '#cbd5e1' }}">
+      </div>
+      <div style="flex:1">
+        <div class="task-title {{ 'done' if task.status=='done' else '' }}">{{ task.title }}</div>
+        <div class="task-meta">
+          <span>⏱ {{ task.duration_min }}m</span>
+          <span>· {{ task.category }}</span>
+          {% if task.tags %}<span>· 🏷 {{ task.tags }}</span>{% endif %}
+          {% if task.milestone_title %}<span>· 📌 {{ task.milestone_title }}</span>{% endif %}
+        </div>
+      </div>
+      <span class="pill pill-{{ task.status if task.status=='done' else task.priority }}">
+        {{ 'DONE ✓' if task.status=='done' else task.priority.upper() }}
+      </span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p style="color:#8898bb;font-size:13px;padding:20px;text-align:center">Tidak ada task hari ini.</p>
+  {% endif %}
+
+  <!-- FOOTER -->
+  <div class="report-footer">
+    <div class="footer-text">ACTIVITYOS · ENTERPRISE v2.0</div>
+    <div class="footer-text">Generated {{ now().strftime('%d/%m/%Y %H:%M') }}</div>
+  </div>
+</div>
+
+<button class="print-btn" onclick="window.print()">
+  <svg width="15" height="15" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+  Cetak / Simpan PDF
+</button>
+</body>
+</html>

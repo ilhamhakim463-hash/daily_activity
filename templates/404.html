@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>{% if code == 500 %}500 — Server Error{% else %}404 — Tidak Ditemukan{% endif %} · ActivityOS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    :root { --indigo:#6366f1; --indigo-glow:rgba(99,102,241,0.2); --cyan:#06b6d4; --rose:#f43f5e; --ease:cubic-bezier(0.16,1,0.3,1); }
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Outfit',sans-serif; background:#0a0a0f; color:#f0f0f8; min-height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    body::after { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(99,102,241,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.03) 1px,transparent 1px); background-size:48px 48px; pointer-events:none; }
+
+    .orb { position:fixed; border-radius:50%; filter:blur(80px); pointer-events:none; }
+    .orb-1 { width:350px; height:350px; background:rgba(99,102,241,0.1); top:-80px; left:-80px; }
+    .orb-2 { width:250px; height:250px; background:rgba(244,63,94,0.06); bottom:-60px; right:-60px; }
+
+    .container {
+      text-align:center; z-index:1; padding:40px 24px;
+      animation:fadeUp 0.7s var(--ease) both;
+    }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+
+    .error-code {
+      font-family:'Space Mono',monospace;
+      font-size:clamp(80px,20vw,140px);
+      font-weight:700;
+      line-height:1;
+      background:linear-gradient(135deg,var(--indigo),var(--cyan));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+      background-clip:text;
+      filter:drop-shadow(0 0 40px var(--indigo-glow));
+      margin-bottom:16px;
+    }
+
+    .glitch { position:relative; display:inline-block; animation:glitch 3s ease-in-out infinite; }
+    @keyframes glitch {
+      0%,90%,100% { transform:translate(0); }
+      92% { transform:translate(-3px,1px); filter:hue-rotate(20deg); }
+      94% { transform:translate(3px,-1px); filter:hue-rotate(-20deg); }
+      96% { transform:translate(-1px,2px); }
+      98% { transform:translate(1px,-2px); }
+    }
+
+    .error-icon { font-size:48px; margin-bottom:16px; animation:bounce 2s ease-in-out infinite; }
+    @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+
+    h1 { font-size:24px; font-weight:700; margin-bottom:8px; }
+    p  { font-size:14px; color:#8888aa; margin-bottom:32px; max-width:360px; margin-inline:auto; }
+
+    .btn-group { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+    .btn {
+      display:inline-flex; align-items:center; gap:8px;
+      padding:11px 20px; border-radius:10px;
+      font-size:13px; font-weight:600; cursor:pointer; border:none;
+      text-decoration:none; transition:all 0.2s var(--ease);
+      font-family:'Outfit',sans-serif;
+    }
+    .btn-primary { background:var(--indigo); color:white; box-shadow:0 0 20px var(--indigo-glow); }
+    .btn-primary:hover { background:#7578f3; transform:translateY(-2px); }
+    .btn-ghost { background:rgba(255,255,255,0.05); color:#8888aa; border:1px solid rgba(255,255,255,0.08); }
+    .btn-ghost:hover { background:rgba(255,255,255,0.1); color:#f0f0f8; }
+
+    .hint {
+      margin-top:40px; font-family:'Space Mono',monospace;
+      font-size:11px; color:#4a4a6a; letter-spacing:1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="container">
+    {% if code == 500 %}
+      <div class="error-icon">💥</div>
+      <div class="error-code glitch">500</div>
+      <h1>Server Error</h1>
+      <p>{{ msg or 'Terjadi kesalahan di server. Tim kami sudah diberitahu. Coba lagi sebentar.' }}</p>
+    {% else %}
+      <div class="error-icon">🔍</div>
+      <div class="error-code glitch">404</div>
+      <h1>Halaman Tidak Ditemukan</h1>
+      <p>Sepertinya halaman yang kamu cari tidak ada atau sudah dipindahkan.</p>
+    {% endif %}
+
+    <div class="btn-group">
+      <a href="/dashboard" class="btn btn-primary">
+        <i data-lucide="layout-dashboard" style="width:14px;height:14px"></i>
+        Ke Dashboard
+      </a>
+      <a href="javascript:history.back()" class="btn btn-ghost">
+        <i data-lucide="arrow-left" style="width:14px;height:14px"></i>
+        Kembali
+      </a>
+    </div>
+
+    <div class="hint">ACTIVITYOS · ENTERPRISE v2.0</div>
+  </div>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>

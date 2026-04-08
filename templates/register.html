@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0f">
+  <title>Register — ActivityOS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    :root { --bg-base:#0a0a0f;--bg-surface:#111118;--bg-elevated:#18181f;--border:rgba(255,255,255,0.06);--border-bright:rgba(255,255,255,0.12);--text-primary:#f0f0f8;--text-secondary:#8888aa;--text-muted:#4a4a6a;--indigo:#6366f1;--indigo-glow:rgba(99,102,241,0.25);--cyan:#06b6d4;--rose:#f43f5e;--ease:cubic-bezier(0.16,1,0.3,1); }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Outfit',sans-serif;background:var(--bg-base);color:var(--text-primary);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;}
+    body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(99,102,241,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+    .bg-orbs{position:fixed;inset:0;pointer-events:none;}
+    .orb{position:absolute;border-radius:50%;filter:blur(80px);animation:float 8s ease-in-out infinite;}
+    .orb-1{width:350px;height:350px;background:rgba(99,102,241,0.1);top:-80px;right:-80px;}
+    .orb-2{width:250px;height:250px;background:rgba(6,182,212,0.07);bottom:-60px;left:-60px;animation-delay:-4s;}
+    @keyframes float{0%,100%{transform:translate(0,0);}50%{transform:translate(15px,-15px);}}
+    .auth-card{background:var(--bg-surface);border:1px solid var(--border-bright);border-radius:28px;padding:36px;width:100%;max-width:420px;position:relative;z-index:1;animation:slideUp 0.6s var(--ease) both;}
+    @keyframes slideUp{from{opacity:0;transform:translateY(32px);}to{opacity:1;transform:translateY(0);}}
+    .logo-mark{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+    .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--indigo),var(--cyan));border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px var(--indigo-glow);}
+    .logo-text{font-size:18px;font-weight:800;}
+    .logo-sub{font-family:'Space Mono',monospace;font-size:9px;color:var(--indigo);letter-spacing:2px;text-transform:uppercase;}
+    h1{font-size:22px;font-weight:700;margin-bottom:4px;}
+    .sub{font-size:13px;color:var(--text-secondary);margin-bottom:24px;}
+    .form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+    .form-label{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;}
+    .input-wrap{position:relative;}
+    .input-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);width:15px;height:15px;pointer-events:none;}
+    .form-input{width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:11px 14px 11px 38px;color:var(--text-primary);font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:all 0.2s;}
+    .form-input:focus{border-color:var(--indigo);box-shadow:0 0 0 3px var(--indigo-glow);}
+    .form-input::placeholder{color:var(--text-muted);}
+    .btn-submit{width:100%;padding:13px;background:var(--indigo);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;transition:all 0.2s;box-shadow:0 0 24px var(--indigo-glow);margin-top:6px;display:flex;align-items:center;justify-content:center;gap:8px;}
+    .btn-submit:hover{background:#7578f3;transform:translateY(-1px);}
+    .auth-footer{text-align:center;margin-top:20px;font-size:13px;color:var(--text-secondary);}
+    .auth-footer a{color:var(--indigo);text-decoration:none;font-weight:600;}
+    .flash{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;background:rgba(244,63,94,0.1);color:var(--rose);border:1px solid rgba(244,63,94,0.2);}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    @media(max-width:400px){.grid-2{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+<div class="bg-orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
+
+<div class="auth-card">
+  <div class="logo-mark">
+    <div class="logo-icon">
+      <svg width="20" height="20" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    </div>
+    <div><div class="logo-text">ActivityOS</div><div class="logo-sub">Enterprise</div></div>
+  </div>
+
+  <h1>Buat Akun Baru ✨</h1>
+  <p class="sub">Mulai perjalanan produktivitasmu hari ini</p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+
+  <form method="POST" action="/register">
+    <div class="form-group">
+      <label class="form-label">Nama Lengkap</label>
+      <div class="input-wrap">
+        <i data-lucide="user" class="input-icon"></i>
+        <input type="text" name="full_name" class="form-input" placeholder="John Doe" required>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <div class="input-wrap">
+          <i data-lucide="at-sign" class="input-icon"></i>
+          <input type="text" name="username" class="form-input" placeholder="johndoe" required autocomplete="username">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <div class="input-wrap">
+          <i data-lucide="mail" class="input-icon"></i>
+          <input type="email" name="email" class="form-input" placeholder="john@mail.com" required>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <div class="input-wrap">
+        <i data-lucide="lock" class="input-icon"></i>
+        <input type="password" name="password" class="form-input" placeholder="Min. 6 karakter" required minlength="6" autocomplete="new-password">
+      </div>
+    </div>
+
+    <button type="submit" class="btn-submit">
+      <i data-lucide="rocket" style="width:16px;height:16px"></i>
+      Daftar Sekarang
+    </button>
+  </form>
+
+  <div class="auth-footer">Sudah punya akun? <a href="/login">Masuk di sini</a></div>
+</div>
+<script>lucide.createIcons();</script>
+</body>
+</html>

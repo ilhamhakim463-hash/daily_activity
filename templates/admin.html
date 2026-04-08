@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — ActivityOS</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── DARK MODE (default) ── */
+:root,[data-theme="dark"]{
+  --bg:#0a0a0f;--surface:#13131a;--elevated:#1a1a24;
+  --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.14);
+  --text:#f1f1f3;--muted:rgba(255,255,255,.45);
+  --indigo:#6366f1;--idim:rgba(99,102,241,.12);
+  --rose:#f43f5e;--rdim:rgba(244,63,94,.1);
+  --em:#10b981;--edim:rgba(16,185,129,.1);
+  --am:#f59e0b;--adim:rgba(245,158,11,.1);
+  --r:14px;
+}
+/* ── LIGHT MODE ── */
+[data-theme="light"]{
+  --bg:#f0f4ff;--surface:#ffffff;--elevated:#f5f7ff;
+  --border:rgba(0,0,0,.09);--border2:rgba(0,0,0,.14);
+  --text:#0f172a;--muted:rgba(15,23,42,.5);
+  --indigo:#4f46e5;--idim:rgba(79,70,229,.1);
+  --rose:#e11d48;--rdim:rgba(225,29,72,.08);
+  --em:#059669;--edim:rgba(5,150,105,.1);
+  --am:#d97706;--adim:rgba(217,119,6,.1);
+  --r:14px;
+}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+.wrap{max-width:960px;margin:0 auto;padding:20px 16px 48px}
+
+/* TOPBAR */
+.top{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px;position:sticky;top:0;z-index:50}
+.top-brand{display:flex;align-items:center;gap:10px}
+.top-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--rose),#f97316);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.top-title{font-size:16px;font-weight:800}
+.top-sub{font-size:11px;color:var(--muted)}
+.btn-out{padding:8px 14px;border-radius:10px;border:1.5px solid var(--border2);background:none;color:var(--rose);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:6px;text-decoration:none}
+.btn-out:hover{background:var(--rdim);border-color:var(--rose)}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.sc{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:16px;text-align:center}
+.sc-n{font-family:'Space Mono',monospace;font-size:28px;font-weight:700;line-height:1}
+.sc-l{font-size:11px;color:var(--muted);margin-top:6px}
+
+/* TABS */
+.tabs{display:flex;gap:4px;background:var(--elevated);border-radius:12px;padding:4px;margin-bottom:20px;overflow-x:auto;scrollbar-width:none}
+.tab{padding:8px 16px;border-radius:9px;border:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:var(--muted);background:transparent;transition:all .18s;white-space:nowrap;flex-shrink:0}
+.tab.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+
+/* CARD */
+.card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden}
+.card-h{padding:14px 18px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse}
+th{padding:10px 16px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);background:var(--elevated);border-bottom:1px solid var(--border)}
+td{padding:13px 16px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+
+/* MOBILE CARDS */
+.ucards{display:none;flex-direction:column;gap:10px}
+.uc{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:14px}
+.uc-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.uc-av{width:40px;height:40px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--indigo),#06b6d4);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;overflow:hidden}
+.uc-nm{font-weight:700;font-size:14px}
+.uc-mt{font-size:11px;color:var(--muted);margin-top:2px}
+.uc-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.uc-acts{display:flex;gap:8px;flex-wrap:wrap}
+
+/* BADGES */
+.badge{padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid;display:inline-flex;align-items:center;gap:3px}
+.ba{background:var(--idim);color:var(--indigo);border-color:rgba(99,102,241,.3)}
+.bk{background:var(--rdim);color:var(--rose);border-color:rgba(244,63,94,.3)}
+.bv{background:var(--edim);color:var(--em);border-color:rgba(16,185,129,.25)}
+.bw{background:var(--adim);color:var(--am);border-color:rgba(245,158,11,.3)}
+
+/* BTNS */
+.btn{padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;border:1.5px solid;transition:all .18s;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.bp{background:var(--indigo);color:#fff;border-color:var(--indigo)}.bp:hover{background:#4f52e0}
+.bg{background:none;color:rgba(255,255,255,.6);border-color:var(--border2)}.bg:hover{color:var(--text);border-color:rgba(255,255,255,.3)}
+.bd{background:none;color:var(--rose);border-color:rgba(244,63,94,.35)}.bd:hover{background:var(--rdim)}
+.bs{background:none;color:var(--em);border-color:rgba(16,185,129,.35)}.bs:hover{background:var(--edim)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* LOG */
+.li{display:flex;align-items:flex-start;gap:10px;padding:12px 18px;border-bottom:1px solid var(--border)}
+.li:last-child{border-bottom:none}
+.ld{width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px}
+.lb{flex:1;min-width:0}
+.la{font-size:12px;font-weight:700}
+.lm{font-size:11px;color:var(--muted);margin-top:2px}
+.lt{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;white-space:nowrap}
+
+/* SECURITY */
+.sb{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:20px;max-width:480px}
+.flabel{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+.finput{width:100%;padding:10px 14px;border-radius:10px;background:var(--elevated);border:1.5px solid var(--border2);color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;transition:border-color .18s;outline:none}
+.finput:focus{border-color:var(--indigo)}
+.fg{margin-bottom:14px}
+.bfull{width:100%;padding:11px;border-radius:10px;background:var(--indigo);color:#fff;border:none;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:background .18s;margin-top:4px}
+.bfull:hover{background:#4f52e0}
+
+/* MODAL */
+.ov{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px}
+.ov.open{display:flex}
+.modal{background:var(--surface);border:1.5px solid var(--border2);border-radius:20px;padding:24px;width:100%;max-width:400px;animation:up .22s ease}
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.mt{font-size:17px;font-weight:800;margin-bottom:16px}
+.mtarget{background:var(--elevated);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.mav{width:38px;height:38px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--indigo),#06b6d4);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:15px}
+.mfooter{display:flex;gap:10px;margin-top:4px}
+.mfooter .btn{flex:1;justify-content:center;padding:10px;font-size:13px;border-radius:10px}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface);border:1.5px solid var(--border2);padding:10px 20px;border-radius:100px;font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,.5);transition:transform .3s,opacity .3s;opacity:0;z-index:999;white-space:nowrap;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+#toast.ok{border-color:rgba(16,185,129,.4);color:var(--em)}
+#toast.err{border-color:rgba(244,63,94,.4);color:var(--rose)}
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+
+@media(max-width:640px){
+  .stats{grid-template-columns:1fr 1fr}
+  table{display:none}
+  .ucards{display:flex}
+  .wrap{padding:16px 12px 40px}
+  .top{padding:12px 14px}
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-brand">
+    <div class="top-logo">🛡️</div>
+    <div>
+      <div class="top-title">Admin Panel</div>
+      <div class="top-sub">ActivityOS</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button id="themeBtn" onclick="toggleTheme()" title="Ganti tema" style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--border2);background:var(--elevated);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .18s">🌙</button>
+    <a href="/logout" class="btn-out">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </a>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="stats">
+    <div class="sc"><div class="sc-n" style="color:var(--indigo)">{{ users|length }}</div><div class="sc-l">Total User</div></div>
+    <div class="sc"><div class="sc-n" style="color:var(--em)">{{ users|selectattr('is_admin')|list|length }}</div><div class="sc-l">Admin</div></div>
+    <div class="sc"><div class="sc-n" style="color:var(--rose)">{{ users|selectattr('locked_until')|list|length }}</div><div class="sc-l">Terkunci</div></div>
+    <div class="sc"><div class="sc-n" style="color:var(--am)">{{ logs|length }}</div><div class="sc-l">Log</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('users',this)">👥 Users ({{ users|length }})</button>
+    <button class="tab" onclick="showTab('logs',this)">📋 Activity Log</button>
+    <button class="tab" onclick="showTab('sec',this)">🔐 Keamanan</button>
+  </div>
+
+  <!-- USERS -->
+  <div id="tab-users">
+    <div class="card">
+      <div class="card-h">👥 Daftar User</div>
+      <table>
+        <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Last Login</th><th>Aksi</th></tr></thead>
+        <tbody>
+        {% for u in users %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--indigo),#06b6d4);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:13px;overflow:hidden;flex-shrink:0">
+                {% if u.avatar_url %}<img src="{{ u.avatar_url }}" style="width:100%;height:100%;object-fit:cover">{% else %}{{ u.username[:1]|upper }}{% endif %}
+              </div>
+              <div>
+                <div style="font-weight:700;font-size:13px">{{ u.full_name or u.username }}</div>
+                <div style="font-size:11px;color:var(--muted)">@{{ u.username }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            {% if u.is_admin %}<span class="badge ba">👑 Admin</span>{% else %}<span class="badge bv">User</span>{% endif %}
+            {% if u.id == current_admin_id %}<span class="badge bw" style="margin-left:4px">Anda</span>{% endif %}
+          </td>
+          <td>
+            {% if u.locked_until %}<span class="badge bk">🔒 Terkunci</span>
+            {% elif u.failed_attempts and u.failed_attempts > 0 %}<span class="badge bw">⚠️ {{ u.failed_attempts }}x</span>
+            {% else %}<span class="badge bv">✅ Aktif</span>{% endif %}
+          </td>
+          <td style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace">{{ u.last_login[:16].replace('T',' ') if u.last_login else '—' }}</td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn bp" onclick="openReset({{ u.id }},{{ u.username | tojson }},{{ (u.full_name or u.username) | tojson }})">🔑 Reset PW</button>
+              {% if u.id != current_admin_id %}
+                {% if u.locked_until %}<button class="btn bs" onclick="doLock({{ u.id }},false,this)">🔓 Buka</button>
+                {% else %}<button class="btn bd" onclick="doLock({{ u.id }},true,this)">🔒 Kunci</button>{% endif %}
+                {% if u.is_admin %}<button class="btn bg" onclick="doAdmin({{ u.id }},false,this)">⬇ Demote</button>
+                {% else %}<button class="btn bg" onclick="doAdmin({{ u.id }},true,this)">⬆ Admin</button>{% endif %}
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Mobile cards -->
+      <div class="ucards" style="padding:12px">
+        {% for u in users %}
+        <div class="uc">
+          <div class="uc-top">
+            <div class="uc-av">{% if u.avatar_url %}<img src="{{ u.avatar_url }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">{% else %}{{ u.username[:1]|upper }}{% endif %}</div>
+            <div>
+              <div class="uc-nm">{{ u.full_name or u.username }}</div>
+              <div class="uc-mt">@{{ u.username }}</div>
+              <div class="uc-mt" style="font-family:'Space Mono',monospace;font-size:10px">{{ u.last_login[:16].replace('T',' ') if u.last_login else 'Belum login' }}</div>
+            </div>
+          </div>
+          <div class="uc-badges">
+            {% if u.is_admin %}<span class="badge ba">👑 Admin</span>{% else %}<span class="badge bv">User</span>{% endif %}
+            {% if u.id == current_admin_id %}<span class="badge bw">Anda</span>{% endif %}
+            {% if u.locked_until %}<span class="badge bk">🔒 Terkunci</span>
+            {% elif u.failed_attempts and u.failed_attempts > 0 %}<span class="badge bw">⚠️ {{ u.failed_attempts }}x</span>
+            {% else %}<span class="badge bv">✅ Aktif</span>{% endif %}
+          </div>
+          <div class="uc-acts">
+            <button class="btn bp" onclick="openReset({{ u.id }},{{ u.username | tojson }},{{ (u.full_name or u.username) | tojson }})">🔑 Reset PW</button>
+            {% if u.id != current_admin_id %}
+              {% if u.locked_until %}<button class="btn bs" onclick="doLock({{ u.id }},false,this)">🔓 Buka</button>
+              {% else %}<button class="btn bd" onclick="doLock({{ u.id }},true,this)">🔒 Kunci</button>{% endif %}
+              {% if u.is_admin %}<button class="btn bg" onclick="doAdmin({{ u.id }},false,this)">⬇ Demote</button>
+              {% else %}<button class="btn bg" onclick="doAdmin({{ u.id }},true,this)">⬆ Admin</button>{% endif %}
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGS -->
+  <div id="tab-logs" style="display:none">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div class="card-h" style="margin:0">📋 Activity Log (10 terbaru)</div>
+          <a href="/admin/logs" style="font-size:12px;color:#818cf8;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);border-radius:8px;padding:5px 12px;text-decoration:none;font-weight:500">
+            📄 Lihat Semua ({{ total_logs }}) →
+          </a>
+        </div>
+      {% if logs %}
+        {% for l in logs %}
+        <div class="li">
+          <div class="ld" style="background:{{ 'rgba(16,185,129,.1)' if 'success' in l.action else ('rgba(244,63,94,.1)' if 'fail' in l.action else 'rgba(99,102,241,.1)') }}">
+            {{ '✅' if 'success' in l.action else ('❌' if 'fail' in l.action else '👑') }}
+          </div>
+          <div class="lb">
+            <div class="la">@{{ l.username or '?' }} —
+              {% if l.action=='login_success' %}Login berhasil
+              {% elif l.action=='login_failed' %}Login gagal
+              {% elif l.action=='admin_reset_password' %}Reset password user
+              {% elif l.action=='admin_lock' %}Kunci akun
+              {% elif l.action=='admin_unlock' %}Buka kunci
+              {% elif l.action=='admin_promote' %}Promote admin
+              {% elif l.action=='admin_demote' %}Cabut admin
+              {% else %}{{ l.action }}{% endif %}
+            </div>
+            <div class="lm">IP: {{ l.ip_address or '—' }}{% if l.detail %} · {{ l.detail }}{% endif %}</div>
+          </div>
+          <div class="lt">{{ l.created_at[:16].replace('T',' ') if l.created_at else '—' }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty">Belum ada log aktivitas</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- SECURITY -->
+  <div id="tab-sec" style="display:none">
+    <div class="sb">
+      <div style="font-size:16px;font-weight:800;margin-bottom:4px">🔐 Ganti Password Admin</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:18px">Segera ganti default <code style="background:var(--elevated);padding:2px 6px;border-radius:4px">admin123</code></div>
+      <div class="fg"><label class="flabel">Password Lama</label><input type="password" class="finput" id="oldPw" placeholder="Password saat ini" autocomplete="current-password"></div>
+      <div class="fg"><label class="flabel">Password Baru</label><input type="password" class="finput" id="newPw" placeholder="Min. 8 karakter" autocomplete="new-password"><div id="pwStr" style="font-size:11px;margin-top:6px"></div></div>
+      <div class="fg"><label class="flabel">Konfirmasi</label><input type="password" class="finput" id="confPw" placeholder="Ulangi password baru" autocomplete="new-password"></div>
+      <button class="bfull" onclick="changePw()">💾 Simpan Password Baru</button>
+    </div>
+    <div class="sb" style="margin-top:16px;background:rgba(99,102,241,.04);border-color:rgba(99,102,241,.2)">
+      <div style="font-size:13px;font-weight:800;color:var(--indigo);margin-bottom:12px">💡 Info Keamanan</div>
+      <div style="display:flex;flex-direction:column;gap:9px;font-size:12px;color:rgba(255,255,255,.55)">
+        <div>✅ Password: <strong style="color:var(--text)">PBKDF2-SHA256 + random salt</strong></div>
+        <div>✅ Login lockout: <strong style="color:var(--text)">5x gagal = terkunci 5 menit</strong></div>
+        <div>✅ Session expire: <strong style="color:var(--text)">otomatis 7 hari</strong></div>
+        <div>⚠️ Halaman admin tidak muncul di menu user biasa</div>
+        <div>⚠️ Ganti <code style="background:var(--elevated);padding:2px 5px;border-radius:4px">app.secret_key</code> sebelum production</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- RESET MODAL -->
+<div class="ov" id="resetModal" onclick="if(event.target===this)closeReset()">
+  <div class="modal">
+    <div class="mt">🔑 Reset Password User</div>
+    <div class="mtarget">
+      <div class="mav" id="mAv">?</div>
+      <div><div style="font-weight:700;font-size:14px" id="mNm">—</div><div style="font-size:12px;color:var(--muted)" id="mUn">—</div></div>
+    </div>
+    <input type="hidden" id="mId">
+    <div class="fg"><label class="flabel">Password Baru</label><input type="password" class="finput" id="mPw" placeholder="Min. 6 karakter" autocomplete="new-password"></div>
+    <div class="fg"><label class="flabel">Konfirmasi</label><input type="password" class="finput" id="mCf" placeholder="Ulangi password baru" autocomplete="new-password"></div>
+    <div style="background:var(--rdim);border:1px solid rgba(244,63,94,.2);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--rose);margin-bottom:14px">⚠️ Informasikan password baru ke user setelah reset.</div>
+    <div class="mfooter">
+      <button class="btn bg" onclick="closeReset()">Batal</button>
+      <button class="btn bp" id="mBtn" onclick="submitReset()">🔑 Reset</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+function showTab(n,btn){document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');['users','logs','sec'].forEach(t=>document.getElementById('tab-'+t).style.display=t===n?'':'none')}
+function toast(m,t='ok'){const e=document.getElementById('toast');e.textContent=m;e.className='show '+t;setTimeout(()=>e.className='',2800)}
+function openReset(id,u,n){document.getElementById('mId').value=id;document.getElementById('mNm').textContent=n;document.getElementById('mUn').textContent='@'+u;document.getElementById('mAv').textContent=(n||u)[0].toUpperCase();document.getElementById('mPw').value='';document.getElementById('mCf').value='';document.getElementById('resetModal').classList.add('open')}
+function closeReset(){document.getElementById('resetModal').classList.remove('open')}
+async function submitReset(){const id=document.getElementById('mId').value,pw=document.getElementById('mPw').value,cf=document.getElementById('mCf').value;if(!pw||pw.length<6){toast('Password min. 6 karakter','err');return}if(pw!==cf){toast('Konfirmasi tidak cocok','err');return}const btn=document.getElementById('mBtn');btn.textContent='⏳';btn.disabled=true;try{const r=await fetch('/api/admin/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:parseInt(id),new_password:pw})});const d=await r.json();if(r.ok&&d.ok){closeReset();toast('✅ Password direset!')}else toast(d.error||'Gagal','err')}catch(e){toast('Error','err')}finally{btn.textContent='🔑 Reset';btn.disabled=false}}
+async function doLock(id,lock,btn){if(!confirm(`${lock?'Kunci':'Buka kunci'} akun ini?`))return;btn.disabled=true;try{const r=await fetch('/api/admin/toggle-lock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:id,lock})});const d=await r.json();if(r.ok&&d.ok){toast(`✅ ${lock?'Dikunci':'Dibuka'}`);setTimeout(()=>location.reload(),900)}else{toast('Gagal','err');btn.disabled=false}}catch(e){toast('Error','err');btn.disabled=false}}
+async function doAdmin(id,isAdmin,btn){if(!confirm(`${isAdmin?'Promote jadi admin':'Cabut hak admin'}?`))return;btn.disabled=true;try{const r=await fetch('/api/admin/toggle-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:id,is_admin:isAdmin})});const d=await r.json();if(r.ok&&d.ok){toast('✅ Berhasil!');setTimeout(()=>location.reload(),900)}else{toast(d.error||'Gagal','err');btn.disabled=false}}catch(e){toast('Error','err');btn.disabled=false}}
+document.getElementById('newPw').addEventListener('input',function(){const pw=this.value,el=document.getElementById('pwStr');if(!pw){el.textContent='';return}let s=0;if(pw.length>=8)s++;if(pw.length>=12)s++;if(/[0-9]/.test(pw))s++;if(/[A-Z]/.test(pw))s++;if(/[^A-Za-z0-9]/.test(pw))s++;const[l,c]=s<=1?['Lemah','#f43f5e']:s<=3?['Sedang','#f59e0b']:['Kuat 💪','#10b981'];el.innerHTML=`<span style="color:${c};font-weight:700">${l}</span> · ${pw.length} karakter`})
+async function changePw(){const o=document.getElementById('oldPw').value,n=document.getElementById('newPw').value,c=document.getElementById('confPw').value;if(!o||!n){toast('Semua field wajib','err');return}if(n.length<6){toast('Min. 6 karakter','err');return}if(n!==c){toast('Konfirmasi tidak cocok','err');return}try{const r=await fetch('/api/password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({old_password:o,new_password:n})});const d=await r.json();if(r.ok){toast('🔒 Password diubah!');document.getElementById('oldPw').value='';document.getElementById('newPw').value='';document.getElementById('confPw').value=''}else toast(d.error||'Gagal','err')}catch(e){toast('Error','err')}}
+
+// ── THEME TOGGLE ──
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  document.getElementById('themeBtn').textContent = t==='dark' ? '🌙' : '☀️';
+  localStorage.setItem('adminTheme', t);
+}
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+  applyTheme(cur==='dark' ? 'light' : 'dark');
+}
+// Load saved theme on startup
+(function(){
+  // Sync dengan preferensi user di cookie/localStorage
+  const saved = localStorage.getItem('adminTheme') || localStorage.getItem('theme') || 'dark';
+  applyTheme(saved);
+})();
+</script>
+</body>
+</html>
