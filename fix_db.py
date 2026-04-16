@@ -712,3 +712,277 @@ try:
 except Exception as e:
     print(f"❌ Sprint v5 migration error: {e}")
     import traceback; traceback.print_exc()
+
+
+# ══════════════════════════════════════════════════════
+# MIGRATION: Sprint v6 — Kanban + Workspace + Share
+# ══════════════════════════════════════════════════════
+print("\n── Sprint v6: Kanban + Share migration ──")
+
+try:
+    conn_v6 = dbmod.get_connection()
+    if not conn_v6:
+        raise Exception("DB tidak tersedia")
+    cv6 = conn_v6.cursor(dictionary=True)
+
+    v6_tables = [
+        ("boards", """
+            CREATE TABLE IF NOT EXISTS boards (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL, goal_id INT NULL,
+                title VARCHAR(200) NOT NULL,
+                description TEXT,
+                emoji VARCHAR(10) DEFAULT '📋',
+                theme VARCHAR(20) DEFAULT 'default',
+                visibility ENUM('private','team','public') DEFAULT 'private',
+                type ENUM('personal','project','team') DEFAULT 'personal',
+                invite_code VARCHAR(8) NULL UNIQUE,
+                is_active BOOLEAN DEFAULT TRUE,
+                sort_order INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE SET NULL
+            )
+        """),
+        ("board_columns", """
+            CREATE TABLE IF NOT EXISTS board_columns (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                board_id INT NOT NULL,
+                title VARCHAR(100) NOT NULL,
+                color VARCHAR(7) DEFAULT '#888780',
+                sort_order INT DEFAULT 0,
+                wip_limit INT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE
+            )
+        """),
+        ("board_members", """
+            CREATE TABLE IF NOT EXISTS board_members (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                board_id INT NOT NULL, user_id INT NOT NULL,
+                role ENUM('owner','editor','viewer') DEFAULT 'editor',
+                joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_bm (board_id, user_id),
+                FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """),
+        ("board_cards", """
+            CREATE TABLE IF NOT EXISTS board_cards (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                board_id INT NOT NULL, column_id INT NOT NULL,
+                user_id INT NOT NULL, assigned_to INT NULL, goal_id INT NULL,
+                title VARCHAR(255) NOT NULL, description TEXT,
+                priority ENUM('low','medium','high','urgent') DEFAULT 'medium',
+                label_color VARCHAR(7) NULL, label_text VARCHAR(50) NULL,
+                due_date DATE NULL, est_hours DECIMAL(5,2) NULL,
+                is_recurring BOOLEAN DEFAULT FALSE, recur_type VARCHAR(20) NULL,
+                sort_order INT DEFAULT 0,
+                completed_at TIMESTAMP NULL, archived_at TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE,
+                FOREIGN KEY (column_id) REFERENCES board_columns(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE SET NULL
+            )
+        """),
+        ("card_subtasks", """
+            CREATE TABLE IF NOT EXISTS card_subtasks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                card_id INT NOT NULL,
+                title VARCHAR(200) NOT NULL,
+                is_done BOOLEAN DEFAULT FALSE,
+                done_at TIMESTAMP NULL,
+                sort_order INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (card_id) REFERENCES board_cards(id) ON DELETE CASCADE
+            )
+        """),
+        ("card_comments", """
+            CREATE TABLE IF NOT EXISTS card_comments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                card_id INT NOT NULL, user_id INT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (card_id) REFERENCES board_cards(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """),
+        ("share_reports", """
+            CREATE TABLE IF NOT EXISTS share_reports (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                type VARCHAR(30) NOT NULL,
+                title VARCHAR(200),
+                data JSON,
+                platform VARCHAR(20) DEFAULT 'general',
+                share_token VARCHAR(32) NOT NULL UNIQUE,
+                expires_at TIMESTAMP NULL,
+                view_count INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_share_token (share_token)
+            )
+        """),
+    ]
+
+    for tname, sql in v6_tables:
+        try:
+            cv6.execute(sql)
+            conn_v6.commit()
+            print(f"   ✅ {tname}")
+        except Exception as e:
+            if '1050' in str(e) or 'already exists' in str(e).lower():
+                print(f"   ✓  {tname} (sudah ada)")
+            else:
+                print(f"   ⚠️  {tname}: {e}")
+
+    cv6.close()
+    conn_v6.close()
+    print("\n✅ Sprint v6 migration selesai!")
+    print("   7 tabel baru: boards, board_columns, board_members,")
+    print("   board_cards, card_subtasks, card_comments, share_reports")
+
+except Exception as e:
+    print(f"❌ Sprint v6 error: {e}")
+    import traceback; traceback.print_exc()
+
+
+# ══════════════════════════════════════════════════════
+# MIGRATION: Sprint v7 — ESQ + Weekly Review + Onboarding + Level
+# ══════════════════════════════════════════════════════
+print("\n── Sprint v7: ESQ + Weekly Review + Onboarding ──")
+
+try:
+    conn_v7 = dbmod.get_connection()
+    if not conn_v7:
+        raise Exception("DB tidak tersedia")
+    cv7 = conn_v7.cursor(dictionary=True)
+
+    v7_tables = [
+        ("esq_values", """
+            CREATE TABLE IF NOT EXISTS esq_values (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                title VARCHAR(200) NOT NULL,
+                description TEXT,
+                category VARCHAR(30) DEFAULT 'custom',
+                emoji VARCHAR(10) DEFAULT '⭐',
+                color VARCHAR(7) DEFAULT '#6366f1',
+                priority TINYINT DEFAULT 1,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """),
+        ("esq_reflections", """
+            CREATE TABLE IF NOT EXISTS esq_reflections (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                type VARCHAR(20) DEFAULT 'daily',
+                reflection_date DATE NOT NULL,
+                content TEXT NOT NULL,
+                mood_score TINYINT DEFAULT 3,
+                energy TINYINT DEFAULT 3,
+                gratitude TEXT, lessons TEXT, tomorrow_intent TEXT,
+                isq_score TINYINT DEFAULT NULL,
+                is_private BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_refl (user_id, type, reflection_date),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """),
+        ("esq_spiritual_log", """
+            CREATE TABLE IF NOT EXISTS esq_spiritual_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                log_date DATE NOT NULL,
+                activity VARCHAR(50) NOT NULL,
+                label VARCHAR(100) DEFAULT NULL,
+                is_done BOOLEAN DEFAULT FALSE,
+                done_at TIMESTAMP NULL,
+                quantity DECIMAL(6,2) DEFAULT NULL,
+                unit VARCHAR(20) DEFAULT NULL,
+                notes VARCHAR(255) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_spiritual (user_id, log_date, activity),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_spiritual_date (user_id, log_date)
+            )
+        """),
+        ("weekly_review_generated", """
+            CREATE TABLE IF NOT EXISTS weekly_review_generated (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                week_start DATE NOT NULL, week_end DATE NOT NULL,
+                tasks_done INT DEFAULT 0, tasks_total INT DEFAULT 0,
+                reminders_pct DECIMAL(5,2) DEFAULT 0,
+                avg_mood DECIMAL(4,2) DEFAULT NULL,
+                top_streaks JSON, goal_progress JSON,
+                xp_earned INT DEFAULT 0,
+                spiritual_score TINYINT DEFAULT 0,
+                saving_amount DECIMAL(20,2) DEFAULT 0,
+                highlight VARCHAR(255),
+                ai_summary TEXT,
+                is_read BOOLEAN DEFAULT FALSE,
+                share_token VARCHAR(32) NULL UNIQUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_week_review (user_id, week_start),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """),
+        ("user_profile_setup", """
+            CREATE TABLE IF NOT EXISTS user_profile_setup (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL UNIQUE,
+                profile_type VARCHAR(30) DEFAULT 'lainnya',
+                profile_emoji VARCHAR(10) DEFAULT '👤',
+                focus_areas JSON,
+                work_hours_start TIME DEFAULT '08:00:00',
+                work_hours_end TIME DEFAULT '17:00:00',
+                sleep_time TIME DEFAULT '22:00:00',
+                wake_time TIME DEFAULT '05:00:00',
+                religion VARCHAR(20) DEFAULT NULL,
+                timezone VARCHAR(50) DEFAULT 'Asia/Jakarta',
+                setup_complete BOOLEAN DEFAULT FALSE,
+                setup_step TINYINT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """),
+        ("level_rewards", """
+            CREATE TABLE IF NOT EXISTS level_rewards (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                level TINYINT NOT NULL,
+                reward_type VARCHAR(20) NOT NULL,
+                reward_key VARCHAR(50) NOT NULL,
+                reward_name VARCHAR(100) NOT NULL,
+                description VARCHAR(255),
+                UNIQUE KEY uniq_reward (level, reward_key)
+            )
+        """),
+    ]
+
+    for tname, sql in v7_tables:
+        try:
+            cv7.execute(sql)
+            conn_v7.commit()
+            print(f"   ✅ {tname}")
+        except Exception as e:
+            if '1050' in str(e) or 'already exists' in str(e).lower():
+                print(f"   ✓  {tname} (sudah ada)")
+            else:
+                print(f"   ⚠️  {tname}: {e}")
+
+    cv7.close()
+    conn_v7.close()
+    print("\n✅ Sprint v7 migration selesai!")
+
+except Exception as e:
+    print(f"❌ Sprint v7 error: {e}")
+    import traceback; traceback.print_exc()

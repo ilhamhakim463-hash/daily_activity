@@ -1463,6 +1463,303 @@ def add_tables_v4():
         )
     """)
 
+    # ══════════════════════════════════════════════════════
+    # SPRINT v6 — KANBAN + WORKSPACE + SHARE
+    # ══════════════════════════════════════════════════════
+
+    # ── boards ──
+    # Kanban board — bisa private, team, atau public
+    # visibility: private | team | public
+    # type: personal | project | team
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS boards (
+            id           INT AUTO_INCREMENT PRIMARY KEY,
+            user_id      INT          NOT NULL,
+            goal_id      INT          NULL,
+            title        VARCHAR(200) NOT NULL,
+            description  TEXT,
+            emoji        VARCHAR(10)  DEFAULT '📋',
+            theme        VARCHAR(20)  DEFAULT 'default',
+            visibility   ENUM('private','team','public') DEFAULT 'private',
+            type         ENUM('personal','project','team') DEFAULT 'personal',
+            invite_code  VARCHAR(8)   NULL UNIQUE,
+            is_active    BOOLEAN      DEFAULT TRUE,
+            sort_order   INT          DEFAULT 0,
+            created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            updated_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+                         ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE SET NULL,
+            INDEX idx_board_user   (user_id, is_active),
+            INDEX idx_board_invite (invite_code)
+        )
+    """)
+
+    # ── board_columns ──
+    # Kolom di dalam board (default: Todo, Doing, Done)
+    # bisa dikustom nama dan warnanya
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS board_columns (
+            id         INT AUTO_INCREMENT PRIMARY KEY,
+            board_id   INT          NOT NULL,
+            title      VARCHAR(100) NOT NULL,
+            color      VARCHAR(7)   DEFAULT '#888780',
+            sort_order INT          DEFAULT 0,
+            wip_limit  INT          NULL,
+            created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE,
+            INDEX idx_col_board (board_id, sort_order)
+        )
+    """)
+
+    # ── board_members ──
+    # Member tim untuk board type='team'
+    # role: owner | editor | viewer
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS board_members (
+            id         INT AUTO_INCREMENT PRIMARY KEY,
+            board_id   INT          NOT NULL,
+            user_id    INT          NOT NULL,
+            role       ENUM('owner','editor','viewer') DEFAULT 'editor',
+            joined_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_bm (board_id, user_id),
+            FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE CASCADE,
+            INDEX idx_bm_user (user_id)
+        )
+    """)
+
+    # ── board_cards ──
+    # Card di dalam kolom kanban
+    # Extends daily_tasks concept with kanban-specific fields
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS board_cards (
+            id           INT AUTO_INCREMENT PRIMARY KEY,
+            board_id     INT          NOT NULL,
+            column_id    INT          NOT NULL,
+            user_id      INT          NOT NULL,
+            assigned_to  INT          NULL,
+            goal_id      INT          NULL,
+            title        VARCHAR(255) NOT NULL,
+            description  TEXT,
+            priority     ENUM('low','medium','high','urgent') DEFAULT 'medium',
+            label_color  VARCHAR(7)   DEFAULT NULL,
+            label_text   VARCHAR(50)  DEFAULT NULL,
+            due_date     DATE         NULL,
+            est_hours    DECIMAL(5,2) DEFAULT NULL,
+            is_recurring BOOLEAN      DEFAULT FALSE,
+            recur_type   VARCHAR(20)  DEFAULT NULL,
+            sort_order   INT          DEFAULT 0,
+            completed_at TIMESTAMP    NULL,
+            archived_at  TIMESTAMP    NULL,
+            created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            updated_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+                         ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (board_id)   REFERENCES boards(id)  ON DELETE CASCADE,
+            FOREIGN KEY (column_id)  REFERENCES board_columns(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id)    REFERENCES users(id)   ON DELETE CASCADE,
+            FOREIGN KEY (assigned_to) REFERENCES users(id)  ON DELETE SET NULL,
+            FOREIGN KEY (goal_id)    REFERENCES goals(id)   ON DELETE SET NULL,
+            INDEX idx_card_board  (board_id, archived_at),
+            INDEX idx_card_column (column_id, sort_order),
+            INDEX idx_card_due    (due_date)
+        )
+    """)
+
+    # ── card_subtasks ──
+    # Subtask checklist di dalam setiap card
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS card_subtasks (
+            id         INT AUTO_INCREMENT PRIMARY KEY,
+            card_id    INT          NOT NULL,
+            title      VARCHAR(200) NOT NULL,
+            is_done    BOOLEAN      DEFAULT FALSE,
+            done_at    TIMESTAMP    NULL,
+            sort_order INT          DEFAULT 0,
+            created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (card_id) REFERENCES board_cards(id) ON DELETE CASCADE,
+            INDEX idx_sub_card (card_id, sort_order)
+        )
+    """)
+
+    # ── card_comments ──
+    # Komentar/diskusi di dalam card (untuk board tim)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS card_comments (
+            id         INT AUTO_INCREMENT PRIMARY KEY,
+            card_id    INT          NOT NULL,
+            user_id    INT          NOT NULL,
+            content    TEXT         NOT NULL,
+            created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+                       ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (card_id)  REFERENCES board_cards(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id)  REFERENCES users(id)       ON DELETE CASCADE,
+            INDEX idx_comment_card (card_id)
+        )
+    """)
+
+    # ── share_reports ──
+    # Laporan yang sudah di-generate untuk di-share
+    # type: weekly_summary | goal_progress | streak | finance | board_progress
+    # platform: whatsapp | instagram | twitter | general
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS share_reports (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            user_id     INT          NOT NULL,
+            type        VARCHAR(30)  NOT NULL,
+            title       VARCHAR(200),
+            data        JSON,
+            platform    VARCHAR(20)  DEFAULT 'general',
+            share_token VARCHAR(32)  NOT NULL UNIQUE,
+            expires_at  TIMESTAMP    NULL,
+            view_count  INT          DEFAULT 0,
+            created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            INDEX idx_share_token (share_token),
+            INDEX idx_share_user  (user_id)
+        )
+    """)
+
+    # ══════════════════════════════════════════════════════
+    # SPRINT v7 — ESQ ENHANCEMENT + WEEKLY REVIEW + ONBOARDING
+    # ══════════════════════════════════════════════════════
+
+    # ── esq_values ──
+    # Nilai-nilai hidup yang user tetapkan sendiri
+    # category: iman | keluarga | karir | kesehatan | sosial | ilmu | custom
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS esq_values (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            user_id     INT          NOT NULL,
+            title       VARCHAR(200) NOT NULL,
+            description TEXT,
+            category    VARCHAR(30)  DEFAULT 'custom',
+            emoji       VARCHAR(10)  DEFAULT '⭐',
+            color       VARCHAR(7)   DEFAULT '#6366f1',
+            priority    TINYINT      DEFAULT 1,
+            is_active   BOOLEAN      DEFAULT TRUE,
+            created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            INDEX idx_values_user (user_id, is_active)
+        )
+    """)
+
+    # ── esq_reflections ──
+    # Refleksi mendalam harian/mingguan
+    # type: daily | weekly | milestone | gratitude | muhasabah
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS esq_reflections (
+            id              INT AUTO_INCREMENT PRIMARY KEY,
+            user_id         INT          NOT NULL,
+            type            VARCHAR(20)  DEFAULT 'daily',
+            reflection_date DATE         NOT NULL,
+            content         TEXT         NOT NULL,
+            mood_score      TINYINT      DEFAULT 3,
+            energy          TINYINT      DEFAULT 3,
+            gratitude       TEXT,
+            lessons         TEXT,
+            tomorrow_intent TEXT,
+            isq_score       TINYINT      DEFAULT NULL,
+            is_private      BOOLEAN      DEFAULT TRUE,
+            created_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_refl (user_id, type, reflection_date),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            INDEX idx_refl_date (user_id, reflection_date)
+        )
+    """)
+
+    # ── esq_spiritual_log ──
+    # Log ibadah & aktivitas spiritual harian
+    # activity: sholat_subuh/dzuhur/ashar/maghrib/isya | quran | dzikir |
+    #           sedekah | puasa | tahajud | dhuha | custom
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS esq_spiritual_log (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            user_id     INT          NOT NULL,
+            log_date    DATE         NOT NULL,
+            activity    VARCHAR(50)  NOT NULL,
+            label       VARCHAR(100) DEFAULT NULL,
+            is_done     BOOLEAN      DEFAULT FALSE,
+            done_at     TIMESTAMP    NULL,
+            quantity    DECIMAL(6,2) DEFAULT NULL,
+            unit        VARCHAR(20)  DEFAULT NULL,
+            notes       VARCHAR(255) DEFAULT NULL,
+            created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY  uniq_spiritual (user_id, log_date, activity),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            INDEX idx_spiritual_date (user_id, log_date)
+        )
+    """)
+
+    # ── weekly_review_generated ──
+    # Weekly review yang di-generate otomatis setiap Minggu
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS weekly_review_generated (
+            id              INT AUTO_INCREMENT PRIMARY KEY,
+            user_id         INT          NOT NULL,
+            week_start      DATE         NOT NULL,
+            week_end        DATE         NOT NULL,
+            tasks_done      INT          DEFAULT 0,
+            tasks_total     INT          DEFAULT 0,
+            reminders_pct   DECIMAL(5,2) DEFAULT 0,
+            avg_mood        DECIMAL(4,2) DEFAULT NULL,
+            top_streaks     JSON,
+            goal_progress   JSON,
+            saving_amount   DECIMAL(20,2) DEFAULT 0,
+            xp_earned       INT          DEFAULT 0,
+            spiritual_score TINYINT      DEFAULT 0,
+            highlight       VARCHAR(255),
+            ai_summary      TEXT,
+            is_read         BOOLEAN      DEFAULT FALSE,
+            share_token     VARCHAR(32)  NULL UNIQUE,
+            created_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_week_review (user_id, week_start),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            INDEX idx_wrev_user (user_id, week_start)
+        )
+    """)
+
+    # ── user_profile_setup ──
+    # Onboarding: profil dan preferensi awal user
+    # profile_type: pelajar | mahasiswa | profesional | ibu_rumah_tangga |
+    #               wirausaha | pensiunan | lainnya
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS user_profile_setup (
+            id              INT AUTO_INCREMENT PRIMARY KEY,
+            user_id         INT          NOT NULL UNIQUE,
+            profile_type    VARCHAR(30)  DEFAULT 'lainnya',
+            profile_emoji   VARCHAR(10)  DEFAULT '👤',
+            focus_areas     JSON,
+            work_hours_start TIME        DEFAULT '08:00:00',
+            work_hours_end   TIME        DEFAULT '17:00:00',
+            sleep_time      TIME         DEFAULT '22:00:00',
+            wake_time       TIME         DEFAULT '05:00:00',
+            religion        VARCHAR(20)  DEFAULT NULL,
+            timezone        VARCHAR(50)  DEFAULT 'Asia/Jakarta',
+            setup_complete  BOOLEAN      DEFAULT FALSE,
+            setup_step      TINYINT      DEFAULT 0,
+            created_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            updated_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+                            ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    # ── level_rewards ──
+    # Reward yang unlock per level (tema, fitur, badge)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS level_rewards (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            level       TINYINT      NOT NULL,
+            reward_type VARCHAR(20)  NOT NULL,
+            reward_key  VARCHAR(50)  NOT NULL,
+            reward_name VARCHAR(100) NOT NULL,
+            description VARCHAR(255),
+            UNIQUE KEY uniq_reward (level, reward_key)
+        )
+    """)
+
     conn.commit(); c.close(); conn.close()
     print("[DB] ✅ Sprint v4 tables ready")
 
@@ -2498,5 +2795,598 @@ def get_portfolio_summary(user_id: int) -> dict:
             'total_pnl':   round(total_pnl, 2),
             'total_pnl_pct': round(total_pnl / total_modal * 100, 2) if total_modal else 0,
         }
+    finally:
+        c.close(); conn.close()
+
+
+# ══════════════════════════════════════════════════════
+# KANBAN HELPERS
+# ══════════════════════════════════════════════════════
+
+BOARD_THEMES = {
+    'default':  {'todo':'#888780','doing':'#378ADD','done':'#10b981'},
+    'forest':   {'todo':'#9FE1CB','doing':'#1D9E75','done':'#085041'},
+    'sunset':   {'todo':'#FAC775','doing':'#EF9F27','done':'#854F0B'},
+    'ocean':    {'todo':'#85B7EB','doing':'#185FA5','done':'#042C53'},
+    'cherry':   {'todo':'#F4C0D1','doing':'#D4537E','done':'#4B1528'},
+    'minimal':  {'todo':'#D3D1C7','doing':'#5F5E5A','done':'#2C2C2A'},
+    'gold':     {'todo':'#FAC775','doing':'#d4af37','done':'#412402'},
+}
+
+import secrets as _secrets
+
+def create_board(user_id: int, title: str, description: str = '',
+                 emoji: str = '📋', theme: str = 'default',
+                 visibility: str = 'private', board_type: str = 'personal',
+                 goal_id: int = None) -> dict:
+    """Create board with default 3 columns."""
+    conn = get_connection()
+    if not conn: return {}
+    c = conn.cursor(dictionary=True)
+    try:
+        invite = None
+        if visibility in ('team', 'public'):
+            invite = _secrets.token_hex(4).upper()
+
+        c.execute("""
+            INSERT INTO boards
+                (user_id, goal_id, title, description, emoji, theme,
+                 visibility, type, invite_code)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (user_id, goal_id, title, description, emoji, theme,
+               visibility, board_type, invite))
+        board_id = c.lastrowid
+
+        # Default columns
+        theme_colors = BOARD_THEMES.get(theme, BOARD_THEMES['default'])
+        cols = [
+            ('To Do',  theme_colors['todo'],  0),
+            ('Doing',  theme_colors['doing'], 1),
+            ('Done',   theme_colors['done'],  2),
+        ]
+        for col_title, color, order in cols:
+            c.execute("""
+                INSERT INTO board_columns (board_id, title, color, sort_order)
+                VALUES (%s,%s,%s,%s)
+            """, (board_id, col_title, color, order))
+
+        # Add creator as owner member
+        c.execute("""
+            INSERT INTO board_members (board_id, user_id, role)
+            VALUES (%s,%s,'owner')
+        """, (board_id, user_id))
+
+        conn.commit()
+        return {'id': board_id, 'invite_code': invite}
+    except Exception as e:
+        conn.rollback()
+        return {'error': str(e)}
+    finally:
+        c.close(); conn.close()
+
+
+def get_boards(user_id: int) -> list:
+    """Get all boards accessible by user (owned + member)."""
+    conn = get_connection()
+    if not conn: return []
+    c = conn.cursor(dictionary=True)
+    try:
+        c.execute("""
+            SELECT DISTINCT b.*,
+                   bm.role AS user_role,
+                   (SELECT COUNT(*) FROM board_cards bc
+                    WHERE bc.board_id = b.id AND bc.archived_at IS NULL) AS card_count,
+                   (SELECT COUNT(*) FROM board_cards bc
+                    WHERE bc.board_id = b.id AND bc.completed_at IS NOT NULL
+                    AND bc.archived_at IS NULL) AS done_count
+            FROM boards b
+            JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = %s
+            WHERE b.is_active = 1
+            ORDER BY b.sort_order, b.created_at DESC
+        """, (user_id,))
+        boards = c.fetchall()
+        for b in boards:
+            if b.get('created_at'):
+                b['created_at'] = b['created_at'].isoformat()
+        return boards
+    finally:
+        c.close(); conn.close()
+
+
+def get_board_detail(board_id: int, user_id: int) -> dict:
+    """Get full board with columns and cards."""
+    conn = get_connection()
+    if not conn: return {}
+    c = conn.cursor(dictionary=True)
+    try:
+        # Verify access
+        c.execute("""
+            SELECT b.*, bm.role AS user_role
+            FROM boards b
+            JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = %s
+            WHERE b.id = %s AND b.is_active = 1
+        """, (user_id, board_id))
+        board = c.fetchone()
+        if not board: return {}
+
+        # Get columns
+        c.execute("""
+            SELECT * FROM board_columns
+            WHERE board_id = %s ORDER BY sort_order
+        """, (board_id,))
+        columns = c.fetchall()
+
+        # Get cards per column
+        for col in columns:
+            c.execute("""
+                SELECT bc.*,
+                       u.username AS assigned_username,
+                       u.full_name AS assigned_name,
+                       (SELECT COUNT(*) FROM card_subtasks cs WHERE cs.card_id = bc.id) AS subtask_total,
+                       (SELECT COUNT(*) FROM card_subtasks cs WHERE cs.card_id = bc.id AND cs.is_done=1) AS subtask_done,
+                       (SELECT COUNT(*) FROM card_comments cc WHERE cc.card_id = bc.id) AS comment_count
+                FROM board_cards bc
+                LEFT JOIN users u ON u.id = bc.assigned_to
+                WHERE bc.column_id = %s AND bc.archived_at IS NULL
+                ORDER BY bc.sort_order, bc.created_at
+            """, (col['id'],))
+            cards = c.fetchall()
+            for card in cards:
+                for k in ['due_date','completed_at','created_at','updated_at']:
+                    if card.get(k) and hasattr(card[k], 'isoformat'):
+                        card[k] = card[k].isoformat()
+            col['cards'] = cards
+
+        # Get members
+        c.execute("""
+            SELECT bm.role, u.id, u.username, u.full_name, u.avatar_url
+            FROM board_members bm
+            JOIN users u ON u.id = bm.user_id
+            WHERE bm.board_id = %s
+        """, (board_id,))
+        members = c.fetchall()
+
+        board['columns'] = columns
+        board['members'] = members
+        if board.get('created_at') and hasattr(board['created_at'], 'isoformat'):
+            board['created_at'] = board['created_at'].isoformat()
+        return board
+    finally:
+        c.close(); conn.close()
+
+
+def move_card(card_id: int, column_id: int, user_id: int, sort_order: int = 0) -> bool:
+    """Move card to different column (drag & drop)."""
+    conn = get_connection()
+    if not conn: return False
+    c = conn.cursor()
+    try:
+        # Check if column done → mark completed_at
+        c.execute("""
+            SELECT bc.title, bcol.title AS col_title
+            FROM board_cards bc
+            JOIN board_columns bcol ON bcol.id = %s
+            WHERE bc.id = %s
+        """, (column_id, card_id))
+        row = c.fetchone()
+
+        is_done_col = row and 'done' in (row[1] or '').lower() if row else False
+
+        c.execute("""
+            UPDATE board_cards
+            SET column_id = %s, sort_order = %s,
+                completed_at = %s
+            WHERE id = %s
+        """, (column_id, sort_order,
+               'NOW()' if is_done_col else None, card_id))
+        conn.commit()
+        return True
+    except:
+        conn.rollback()
+        return False
+    finally:
+        c.close(); conn.close()
+
+
+def generate_share_report(user_id: int, report_type: str) -> dict:
+    """Generate shareable report token."""
+    import json as _json
+    from datetime import date, timedelta
+    conn = get_connection()
+    if not conn: return {}
+    c = conn.cursor(dictionary=True)
+    try:
+        token = _secrets.token_hex(16)
+        expires = (date.today() + timedelta(days=7)).isoformat()
+
+        # Gather data based on type
+        data = {}
+        if report_type == 'weekly_summary':
+            c.execute("""
+                SELECT COUNT(*) as total,
+                       SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) as done
+                FROM daily_tasks
+                WHERE user_id=%s AND task_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            """, (user_id,))
+            tasks = c.fetchone()
+            c.execute("""
+                SELECT AVG(mood_score) as avg_mood
+                FROM user_moods WHERE user_id=%s
+                AND mood_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            """, (user_id,))
+            mood = c.fetchone()
+            data = {
+                'tasks_done': int(tasks['done'] or 0) if tasks else 0,
+                'tasks_total': int(tasks['total'] or 0) if tasks else 0,
+                'avg_mood': float(mood['avg_mood'] or 0) if mood else 0,
+            }
+        elif report_type == 'streak':
+            c.execute("""
+                SELECT r.title, r.emoji, rs.current_streak, rs.longest_streak, rs.tier
+                FROM reminders r
+                JOIN reminder_streaks rs ON rs.reminder_id = r.id
+                WHERE r.user_id = %s AND r.is_active = 1
+                ORDER BY rs.current_streak DESC LIMIT 5
+            """, (user_id,))
+            data = {'streaks': c.fetchall()}
+        elif report_type == 'goal_progress':
+            c.execute("""
+                SELECT title, icon, color FROM goals
+                WHERE user_id=%s AND is_active=1 LIMIT 5
+            """, (user_id,))
+            data = {'goals': c.fetchall()}
+
+        c.execute("""
+            INSERT INTO share_reports (user_id, type, data, share_token, expires_at)
+            VALUES (%s,%s,%s,%s,%s)
+        """, (user_id, report_type, _json.dumps(data), token, expires))
+        conn.commit()
+        return {'token': token, 'expires_at': expires}
+    except Exception as e:
+        conn.rollback()
+        return {'error': str(e)}
+    finally:
+        c.close(); conn.close()
+
+
+# ══════════════════════════════════════════════════════════
+# ESQ HELPERS — VALUES + REFLECTIONS + SPIRITUAL
+# ══════════════════════════════════════════════════════════
+
+# Built-in spiritual activities
+SPIRITUAL_ACTIVITIES = [
+    ('sholat_subuh',  'Sholat Subuh',  '🌅', None, None),
+    ('sholat_dzuhur', 'Sholat Dzuhur', '☀️',  None, None),
+    ('sholat_ashar',  'Sholat Ashar',  '🌤',  None, None),
+    ('sholat_maghrib','Sholat Maghrib','🌆', None, None),
+    ('sholat_isya',   'Sholat Isya',   '🌙', None, None),
+    ('quran',         'Baca Al-Quran', '📖', 1.0,  'halaman'),
+    ('dzikir_pagi',   'Dzikir Pagi',   '🌿', None, None),
+    ('dzikir_malam',  'Dzikir Malam',  '✨', None, None),
+    ('tahajud',       'Sholat Tahajud','🌟', None, None),
+    ('dhuha',         'Sholat Dhuha',  '🌞', None, None),
+    ('sedekah',       'Sedekah',       '💝', None, None),
+    ('puasa',         'Puasa Sunnah',  '🤲', None, None),
+]
+
+PROFILE_TYPES = {
+    'pelajar':          ('🎒', 'Pelajar/Siswa',       ['belajar','kesehatan','ibadah']),
+    'mahasiswa':        ('🎓', 'Mahasiswa',            ['akademik','produktivitas','ibadah']),
+    'profesional':      ('💼', 'Profesional/Karyawan', ['karir','kesehatan','keluarga']),
+    'ibu_rumah_tangga': ('🏠', 'Ibu Rumah Tangga',     ['keluarga','ibadah','kesehatan']),
+    'wirausaha':        ('🚀', 'Wirausahawan',          ['bisnis','finansial','kesehatan']),
+    'pensiunan':        ('🌸', 'Pensiunan',             ['kesehatan','ibadah','keluarga']),
+    'lainnya':          ('👤', 'Lainnya',               ['produktivitas','kesehatan']),
+}
+
+LEVEL_SYSTEM = [
+    (1,  0,     100,   'Pemula',       '#888780', '🌱'),
+    (2,  100,   250,   'Penjelajah',   '#EF9F27', '🔍'),
+    (3,  250,   500,   'Konsisten',    '#639922', '⚡'),
+    (4,  500,   900,   'Disiplin',     '#1D9E75', '💎'),
+    (5,  900,   1500,  'Produktif',    '#378ADD', '🌊'),
+    (6,  1500,  2500,  'Andal',        '#534AB7', '🔮'),
+    (7,  2500,  4000,  'Mahir',        '#D4537E', '🌸'),
+    (8,  4000,  6000,  'Ahli',         '#D85A30', '🔥'),
+    (9,  6000,  9000,  'Master',       '#d4af37', '👑'),
+    (10, 9000,  99999, 'Grand Master', '#7F77DD', '🌟'),
+]
+
+
+def get_esq_today(user_id: int, date_str: str = None) -> dict:
+    """Get today's ESQ data: morning, evening, spiritual log, reflection."""
+    from datetime import date
+    d = date_str or date.today().isoformat()
+    conn = get_connection()
+    if not conn: return {}
+    c = conn.cursor(dictionary=True)
+    try:
+        # Morning ISQ
+        c.execute("SELECT * FROM isq_morning WHERE user_id=%s AND entry_date=%s",
+                  (user_id, d))
+        morning = c.fetchone()
+
+        # Evening ISQ
+        c.execute("SELECT * FROM isq_evening WHERE user_id=%s AND entry_date=%s",
+                  (user_id, d))
+        evening = c.fetchone()
+
+        # Spiritual log
+        c.execute("""SELECT * FROM esq_spiritual_log
+                     WHERE user_id=%s AND log_date=%s ORDER BY activity""",
+                  (user_id, d))
+        spiritual = c.fetchall()
+        spiritual_map = {s['activity']: s for s in spiritual}
+
+        # Reflection
+        c.execute("""SELECT * FROM esq_reflections
+                     WHERE user_id=%s AND type='daily' AND reflection_date=%s""",
+                  (user_id, d))
+        reflection = c.fetchone()
+        if reflection and reflection.get('reflection_date'):
+            reflection['reflection_date'] = reflection['reflection_date'].isoformat()                 if hasattr(reflection['reflection_date'], 'isoformat') else str(reflection['reflection_date'])
+
+        # User values
+        c.execute("""SELECT * FROM esq_values
+                     WHERE user_id=%s AND is_active=1 ORDER BY priority""",
+                  (user_id,))
+        values = c.fetchall()
+
+        return {
+            'morning': morning,
+            'evening': evening,
+            'spiritual': spiritual_map,
+            'reflection': reflection,
+            'values': values,
+            'date': d,
+        }
+    finally:
+        c.close(); conn.close()
+
+
+def toggle_spiritual(user_id: int, activity: str, date_str: str,
+                     label: str = None, quantity=None, unit: str = None) -> dict:
+    """Toggle spiritual activity done/undone."""
+    conn = get_connection()
+    if not conn: return {'ok': False}
+    c = conn.cursor(dictionary=True)
+    try:
+        c.execute("""SELECT id, is_done FROM esq_spiritual_log
+                     WHERE user_id=%s AND log_date=%s AND activity=%s""",
+                  (user_id, date_str, activity))
+        existing = c.fetchone()
+        if existing:
+            new_done = not existing['is_done']
+            c.execute("""UPDATE esq_spiritual_log
+                         SET is_done=%s, done_at=IF(%s,NOW(),NULL)
+                         WHERE id=%s""",
+                      (new_done, new_done, existing['id']))
+        else:
+            c.execute("""INSERT INTO esq_spiritual_log
+                            (user_id, log_date, activity, label, is_done,
+                             done_at, quantity, unit)
+                         VALUES (%s,%s,%s,%s,TRUE,NOW(),%s,%s)""",
+                      (user_id, date_str, activity, label, quantity, unit))
+            new_done = True
+
+        conn.commit()
+        if new_done:
+            award_xp(user_id, 'isq_filled', f'Ibadah: {activity}')
+        return {'ok': True, 'is_done': new_done}
+    except Exception as e:
+        conn.rollback()
+        return {'ok': False, 'error': str(e)}
+    finally:
+        c.close(); conn.close()
+
+
+def save_reflection(user_id: int, date_str: str, content: str,
+                    gratitude: str = None, lessons: str = None,
+                    tomorrow_intent: str = None,
+                    mood_score: int = 3, energy: int = 3,
+                    ref_type: str = 'daily') -> dict:
+    """Save or update daily/weekly reflection."""
+    conn = get_connection()
+    if not conn: return {'ok': False}
+    c = conn.cursor()
+    try:
+        c.execute("""
+            INSERT INTO esq_reflections
+                (user_id, type, reflection_date, content, gratitude,
+                 lessons, tomorrow_intent, mood_score, energy)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            ON DUPLICATE KEY UPDATE
+                content=VALUES(content),
+                gratitude=VALUES(gratitude),
+                lessons=VALUES(lessons),
+                tomorrow_intent=VALUES(tomorrow_intent),
+                mood_score=VALUES(mood_score),
+                energy=VALUES(energy)
+        """, (user_id, ref_type, date_str, content, gratitude,
+               lessons, tomorrow_intent, mood_score, energy))
+        conn.commit()
+        award_xp(user_id, 'isq_filled', 'Refleksi harian')
+        return {'ok': True}
+    except Exception as e:
+        conn.rollback()
+        return {'ok': False, 'error': str(e)}
+    finally:
+        c.close(); conn.close()
+
+
+def generate_weekly_review(user_id: int) -> dict:
+    """Generate weekly review for current week."""
+    from datetime import date, timedelta
+    import json as _json
+    today = date.today()
+    week_start = (today - timedelta(days=today.weekday())).isoformat()
+    week_end   = (today - timedelta(days=today.weekday()) + timedelta(days=6)).isoformat()
+
+    conn = get_connection()
+    if not conn: return {}
+    c = conn.cursor(dictionary=True)
+    try:
+        # Tasks this week
+        c.execute("""SELECT COUNT(*) as total,
+                            SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) as done
+                     FROM daily_tasks
+                     WHERE user_id=%s AND task_date BETWEEN %s AND %s""",
+                  (user_id, week_start, week_end))
+        task_row = c.fetchone()
+        tasks_done  = int(task_row['done']  or 0) if task_row else 0
+        tasks_total = int(task_row['total'] or 0) if task_row else 0
+
+        # Reminder completion this week
+        c.execute("""SELECT COUNT(*) as total,
+                            SUM(CASE WHEN completed_at IS NOT NULL THEN 1 ELSE 0 END) as done
+                     FROM reminder_logs
+                     WHERE user_id=%s AND log_date BETWEEN %s AND %s""",
+                  (user_id, week_start, week_end))
+        rem_row = c.fetchone()
+        rem_done  = int(rem_row['done']  or 0) if rem_row else 0
+        rem_total = int(rem_row['total'] or 0) if rem_row else 0
+        rem_pct   = round(rem_done / rem_total * 100, 1) if rem_total else 0
+
+        # Average mood
+        c.execute("""SELECT AVG(mood_score) as avg_mood FROM user_moods
+                     WHERE user_id=%s AND mood_date BETWEEN %s AND %s""",
+                  (user_id, week_start, week_end))
+        mood_row  = c.fetchone()
+        avg_mood  = round(float(mood_row['avg_mood'] or 0), 1) if mood_row else 0
+
+        # Top streaks
+        c.execute("""SELECT r.title, r.emoji, rs.current_streak, rs.tier
+                     FROM reminders r JOIN reminder_streaks rs ON rs.reminder_id=r.id
+                     WHERE r.user_id=%s AND r.is_active=1
+                     ORDER BY rs.current_streak DESC LIMIT 3""",
+                  (user_id,))
+        top_streaks = c.fetchall()
+
+        # XP earned this week
+        c.execute("""SELECT COALESCE(SUM(xp_amount),0) as total FROM xp_logs
+                     WHERE user_id=%s AND earned_at >= %s""",
+                  (user_id, week_start))
+        xp_row = c.fetchone()
+        xp_earned = int(xp_row['total'] or 0) if xp_row else 0
+
+        # Spiritual score (how many activities done)
+        c.execute("""SELECT COUNT(*) as cnt FROM esq_spiritual_log
+                     WHERE user_id=%s AND log_date BETWEEN %s AND %s AND is_done=1""",
+                  (user_id, week_start, week_end))
+        spi_row = c.fetchone()
+        spiritual_score = int(spi_row['cnt'] or 0) if spi_row else 0
+
+        # Savings this week
+        c.execute("""SELECT COALESCE(SUM(amount),0) as total FROM saving_logs
+                     WHERE user_id=%s AND log_date BETWEEN %s AND %s AND type='deposit'""",
+                  (user_id, week_start, week_end))
+        sav_row = c.fetchone()
+        saving_amount = float(sav_row['total'] or 0) if sav_row else 0
+
+        # Generate highlight text
+        highlights = []
+        if tasks_done > 0:
+            highlights.append(f"{tasks_done} task selesai")
+        if rem_pct >= 80:
+            highlights.append(f"reminder {rem_pct}% konsisten")
+        if spiritual_score >= 7:
+            highlights.append(f"{spiritual_score} ibadah tercatat")
+        if xp_earned > 0:
+            highlights.append(f"+{xp_earned} XP")
+        highlight = " · ".join(highlights) if highlights else "Minggu yang dilewati"
+
+        # Upsert review
+        c.execute("""
+            INSERT INTO weekly_review_generated
+                (user_id, week_start, week_end, tasks_done, tasks_total,
+                 reminders_pct, avg_mood, top_streaks, xp_earned,
+                 spiritual_score, saving_amount, highlight)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            ON DUPLICATE KEY UPDATE
+                tasks_done=VALUES(tasks_done),
+                tasks_total=VALUES(tasks_total),
+                reminders_pct=VALUES(reminders_pct),
+                avg_mood=VALUES(avg_mood),
+                top_streaks=VALUES(top_streaks),
+                xp_earned=VALUES(xp_earned),
+                spiritual_score=VALUES(spiritual_score),
+                saving_amount=VALUES(saving_amount),
+                highlight=VALUES(highlight)
+        """, (user_id, week_start, week_end, tasks_done, tasks_total,
+               rem_pct, avg_mood, _json.dumps(top_streaks),
+               xp_earned, spiritual_score, saving_amount, highlight))
+        conn.commit()
+
+        return {
+            'week_start': week_start,
+            'week_end': week_end,
+            'tasks_done': tasks_done,
+            'tasks_total': tasks_total,
+            'reminders_pct': rem_pct,
+            'avg_mood': avg_mood,
+            'top_streaks': top_streaks,
+            'xp_earned': xp_earned,
+            'spiritual_score': spiritual_score,
+            'saving_amount': saving_amount,
+            'highlight': highlight,
+        }
+    except Exception as e:
+        conn.rollback()
+        return {'error': str(e)}
+    finally:
+        c.close(); conn.close()
+
+
+def get_user_profile(user_id: int) -> dict:
+    """Get user profile setup."""
+    conn = get_connection()
+    if not conn: return {}
+    c = conn.cursor(dictionary=True)
+    try:
+        c.execute("SELECT * FROM user_profile_setup WHERE user_id=%s", (user_id,))
+        profile = c.fetchone()
+        if not profile:
+            return {'setup_complete': False, 'setup_step': 0}
+        for k in ['work_hours_start','work_hours_end','sleep_time','wake_time']:
+            if profile.get(k): profile[k] = str(profile[k])
+        return profile
+    finally:
+        c.close(); conn.close()
+
+
+def save_user_profile(user_id: int, profile_type: str,
+                      focus_areas: list, work_start: str = '08:00',
+                      work_end: str = '17:00', sleep_time: str = '22:00',
+                      wake_time: str = '05:00', religion: str = None) -> bool:
+    import json as _json
+    emoji, _, _ = PROFILE_TYPES.get(profile_type, ('👤', '', []))
+    conn = get_connection()
+    if not conn: return False
+    c = conn.cursor()
+    try:
+        c.execute("""
+            INSERT INTO user_profile_setup
+                (user_id, profile_type, profile_emoji, focus_areas,
+                 work_hours_start, work_hours_end, sleep_time, wake_time,
+                 religion, setup_complete, setup_step)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,TRUE,5)
+            ON DUPLICATE KEY UPDATE
+                profile_type=VALUES(profile_type),
+                profile_emoji=VALUES(profile_emoji),
+                focus_areas=VALUES(focus_areas),
+                work_hours_start=VALUES(work_hours_start),
+                work_hours_end=VALUES(work_hours_end),
+                sleep_time=VALUES(sleep_time),
+                wake_time=VALUES(wake_time),
+                religion=VALUES(religion),
+                setup_complete=TRUE, setup_step=5
+        """, (user_id, profile_type, emoji,
+               _json.dumps(focus_areas),
+               work_start, work_end, sleep_time, wake_time, religion))
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        return False
     finally:
         c.close(); conn.close()

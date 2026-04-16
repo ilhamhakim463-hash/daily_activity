@@ -295,7 +295,10 @@ def roadmap():
     year = request.args.get('year', datetime.now().year, type=int)
     goals = db.get_goals_with_progress(uid, year)
     for g in goals: g['milestones'] = db.get_milestones(uid, goal_id=g['id'])
-    return render_template('roadmap.html', goals=goals, year=year)
+    from datetime import datetime as _dt
+    now_dt = _dt.now()
+    return render_template('roadmap.html', goals=goals, year=year,
+                           current_month=now_dt.month, current_year=now_dt.year)
 
 @app.route('/api/goals', methods=['POST'])
 @login_required
@@ -1746,6 +1749,574 @@ def api_update_rate(code):
     try:
         c.execute("UPDATE currencies SET rate_to_idr=%s WHERE code=%s",
                   (rate, code.upper()))
+        conn.commit()
+        return jsonify({'ok': True})
+    finally:
+        c.close(); conn.close()
+
+# ═══════════════════════════════════════════════════
+# KANBAN BOARD ROUTES
+# ═══════════════════════════════════════════════════
+
+@app.route('/boards')
+@login_required
+def boards_page():
+    boards   = db.get_boards(session['user_id'])
+    goals    = db.get_goals_with_progress(session['user_id'])
+    xp_info  = db.get_user_xp(session['user_id'])
+    return render_template('boards.html', boards=boards,
+                           goals=goals, xp_info=xp_info,
+                           themes=list(db.BOARD_THEMES.keys()))
+
+@app.route('/boards/<int:bid>')
+@login_required
+def board_detail(bid):
+    board = db.get_board_detail(bid, session['user_id'])
+    if not board: return redirect('/boards')
+    goals = db.get_goals_with_progress(session['user_id'])
+    return render_template('board_detail.html', board=board, goals=goals)
+
+# ── Boards CRUD ────────────────────────────────────
+@app.route('/api/boards', methods=['GET'])
+@login_required
+def api_get_boards():
+    return jsonify(db.get_boards(session['user_id']))
+
+@app.route('/api/boards', methods=['POST'])
+@login_required
+def api_create_board():
+    d = request.get_json() or {}
+    if not d.get('title'):
+        return jsonify({'error': 'title wajib'}), 400
+    result = db.create_board(
+        user_id    = session['user_id'],
+        title      = d['title'].strip(),
+        description= d.get('description', ''),
+        emoji      = d.get('emoji', '📋'),
+        theme      = d.get('theme', 'default'),
+        visibility = d.get('visibility', 'private'),
+        board_type = d.get('type', 'personal'),
+        goal_id    = d.get('goal_id') or None,
+    )
+    if 'error' in result:
+        return jsonify(result), 500
+    db.award_xp(session['user_id'], 'task_done', 'Board baru dibuat', result.get('id'))
+    return jsonify(result), 201
+
+@app.route('/api/boards/<int:bid>', methods=['PUT'])
+@login_required
+def api_update_board(bid):
+    d = request.get_json() or {}
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor()
+    try:
+        c.execute("""
+            UPDATE boards SET title=%s, description=%s, emoji=%s,
+                theme=%s, visibility=%s, goal_id=%s
+            WHERE id=%s AND user_id=%s
+        """, (d.get('title'), d.get('description',''),
+               d.get('emoji','📋'), d.get('theme','default'),
+               d.get('visibility','private'),
+               d.get('goal_id') or None,
+               bid, session['user_id']))
+        conn.commit()
+        return jsonify({'ok': True})
+    finally:
+        c.close(); conn.close()
+
+@app.route('/api/boards/<int:bid>', methods=['DELETE'])
+@login_required
+def api_delete_board(bid):
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor()
+    try:
+        c.execute("UPDATE boards SET is_active=0 WHERE id=%s AND user_id=%s",
+                  (bid, session['user_id']))
+        conn.commit()
+        return jsonify({'ok': True})
+    finally:
+        c.close(); conn.close()
+
+@app.route('/api/boards/join', methods=['POST'])
+@login_required
+def api_join_board():
+    d = request.get_json() or {}
+    code = (d.get('invite_code') or '').strip().upper()
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor(dictionary=True)
+    try:
+        c.execute("SELECT * FROM boards WHERE invite_code=%s AND is_active=1", (code,))
+        board = c.fetchone()
+        if not board: return jsonify({'error': 'Kode tidak valid'}), 404
+        c.execute("""
+            INSERT IGNORE INTO board_members (board_id, user_id, role)
+            VALUES (%s,%s,'editor')
+        """, (board['id'], session['user_id']))
+        conn.commit()
+        return jsonify({'ok': True, 'board_id': board['id'], 'title': board['title']})
+    finally:
+        c.close(); conn.close()
+
+# ── Cards CRUD ─────────────────────────────────────
+@app.route('/api/boards/<int:bid>/cards', methods=['POST'])
+@login_required
+def api_create_card(bid):
+    d = request.get_json() or {}
+    if not d.get('title') or not d.get('column_id'):
+        return jsonify({'error': 'title & column_id wajib'}), 400
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor()
+    try:
+        c.execute("""
+            INSERT INTO board_cards
+                (board_id, column_id, user_id, title, description,
+                 priority, label_color, label_text, due_date,
+                 est_hours, goal_id, sort_order)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+                    (SELECT COALESCE(MAX(sort_order),0)+1 FROM board_cards
+                     WHERE column_id=%s))
+        """, (
+            bid, d['column_id'], session['user_id'],
+            d['title'].strip(), d.get('description',''),
+            d.get('priority','medium'),
+            d.get('label_color'), d.get('label_text'),
+            d.get('due_date') or None,
+            d.get('est_hours') or None,
+            d.get('goal_id') or None,
+            d['column_id']
+        ))
+        card_id = c.lastrowid
+        conn.commit()
+        db.award_xp(session['user_id'], 'task_done', 'Card kanban dibuat', card_id)
+        return jsonify({'ok': True, 'id': card_id}), 201
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        c.close(); conn.close()
+
+@app.route('/api/cards/<int:cid>', methods=['GET'])
+@login_required
+def api_get_card(cid):
+    conn = db.get_connection()
+    if not conn: return jsonify({}), 500
+    c = conn.cursor(dictionary=True)
+    try:
+        c.execute("""
+            SELECT bc.*, u.username AS assigned_username
+            FROM board_cards bc
+            LEFT JOIN users u ON u.id = bc.assigned_to
+            WHERE bc.id = %s
+        """, (cid,))
+        card = c.fetchone()
+        if not card: return jsonify({}), 404
+        for k in ['due_date','completed_at','created_at']:
+            if card.get(k) and hasattr(card[k], 'isoformat'):
+                card[k] = card[k].isoformat()
+        # Get subtasks
+        c.execute("""
+            SELECT * FROM card_subtasks WHERE card_id=%s ORDER BY sort_order
+        """, (cid,))
+        card['subtasks'] = c.fetchall()
+        # Get comments
+        c.execute("""
+            SELECT cc.*, u.username, u.full_name FROM card_comments cc
+            JOIN users u ON u.id = cc.user_id
+            WHERE cc.card_id=%s ORDER BY cc.created_at
+        """, (cid,))
+        comments = c.fetchall()
+        for cm in comments:
+            if cm.get('created_at'): cm['created_at'] = cm['created_at'].isoformat()
+        card['comments'] = comments
+        return jsonify(card)
+    finally:
+        c.close(); conn.close()
+
+@app.route('/api/cards/<int:cid>', methods=['PUT'])
+@login_required
+def api_update_card(cid):
+    d = request.get_json() or {}
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor()
+    try:
+        c.execute("""
+            UPDATE board_cards SET
+                title=%s, description=%s, priority=%s,
+                label_color=%s, label_text=%s, due_date=%s,
+                est_hours=%s, goal_id=%s
+            WHERE id=%s
+        """, (
+            d.get('title'), d.get('description',''),
+            d.get('priority','medium'),
+            d.get('label_color'), d.get('label_text'),
+            d.get('due_date') or None,
+            d.get('est_hours') or None,
+            d.get('goal_id') or None,
+            cid
+        ))
+        conn.commit()
+        return jsonify({'ok': True})
+    finally:
+        c.close(); conn.close()
+
+@app.route('/api/cards/<int:cid>/move', methods=['POST'])
+@login_required
+def api_move_card(cid):
+    d = request.get_json() or {}
+    col_id = d.get('column_id')
+    order  = int(d.get('sort_order', 0))
+    if not col_id: return jsonify({'error': 'column_id wajib'}), 400
+
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor(dictionary=True)
+    try:
+        # Check if this is the Done column
+        c.execute("SELECT title FROM board_columns WHERE id=%s", (col_id,))
+        col = c.fetchone()
+        is_done = col and 'done' in (col['title'] or '').lower()
+        c.execute("""
+            UPDATE board_cards SET column_id=%s, sort_order=%s,
+                completed_at = IF(%s=1, NOW(), NULL)
+            WHERE id=%s
+        """, (col_id, order, 1 if is_done else 0, cid))
+        if is_done:
+            db.award_xp(session['user_id'], 'task_done', 'Card selesai', cid)
+        conn.commit()
+        return jsonify({'ok': True, 'is_done': is_done})
+    finally:
+        c.close(); conn.close()
+
+@app.route('/api/cards/<int:cid>', methods=['DELETE'])
+@login_required
+def api_delete_card(cid):
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor()
+    try:
+        c.execute("DELETE FROM board_cards WHERE id=%s", (cid,))
+        conn.commit()
+        return jsonify({'ok': True})
+    finally:
+        c.close(); conn.close()
+
+@app.route('/api/cards/<int:cid>/archive', methods=['POST'])
+@login_required
+def api_archive_card(cid):
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor()
+    try:
+        c.execute("UPDATE board_cards SET archived_at=NOW() WHERE id=%s", (cid,))
+        conn.commit()
+        return jsonify({'ok': True})
+    finally:
+        c.close(); conn.close()
+
+# ── Subtasks ───────────────────────────────────────
+@app.route('/api/cards/<int:cid>/subtasks', methods=['POST'])
+@login_required
+def api_add_subtask(cid):
+    d = request.get_json() or {}
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor()
+    try:
+        c.execute("""
+            INSERT INTO card_subtasks (card_id, title, sort_order)
+            VALUES (%s, %s, (SELECT COALESCE(MAX(sort_order),0)+1
+                             FROM card_subtasks WHERE card_id=%s))
+        """, (cid, d.get('title','').strip(), cid))
+        new_id = c.lastrowid
+        conn.commit()
+        return jsonify({'ok': True, 'id': new_id}), 201
+    finally:
+        c.close(); conn.close()
+
+@app.route('/api/subtasks/<int:sid>/toggle', methods=['POST'])
+@login_required
+def api_toggle_subtask(sid):
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor(dictionary=True)
+    try:
+        c.execute("SELECT is_done FROM card_subtasks WHERE id=%s", (sid,))
+        row = c.fetchone()
+        if not row: return jsonify({'error':'Not found'}), 404
+        new_val = not row['is_done']
+        c.execute("""
+            UPDATE card_subtasks SET is_done=%s, done_at=IF(%s,NOW(),NULL)
+            WHERE id=%s
+        """, (new_val, new_val, sid))
+        conn.commit()
+        return jsonify({'ok': True, 'is_done': new_val})
+    finally:
+        c.close(); conn.close()
+
+@app.route('/api/subtasks/<int:sid>', methods=['DELETE'])
+@login_required
+def api_delete_subtask(sid):
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor()
+    try:
+        c.execute("DELETE FROM card_subtasks WHERE id=%s", (sid,))
+        conn.commit()
+        return jsonify({'ok': True})
+    finally:
+        c.close(); conn.close()
+
+# ── Comments ───────────────────────────────────────
+@app.route('/api/cards/<int:cid>/comments', methods=['POST'])
+@login_required
+def api_add_comment(cid):
+    d = request.get_json() or {}
+    content = (d.get('content') or '').strip()
+    if not content: return jsonify({'error': 'Komentar kosong'}), 400
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor()
+    try:
+        c.execute("""
+            INSERT INTO card_comments (card_id, user_id, content)
+            VALUES (%s,%s,%s)
+        """, (cid, session['user_id'], content))
+        conn.commit()
+        return jsonify({'ok': True, 'id': c.lastrowid}), 201
+    finally:
+        c.close(); conn.close()
+
+# ── Share Reports ──────────────────────────────────
+@app.route('/api/share/generate', methods=['POST'])
+@login_required
+def api_generate_share():
+    d = request.get_json() or {}
+    report_type = d.get('type', 'weekly_summary')
+    result = db.generate_share_report(session['user_id'], report_type)
+    if 'error' in result:
+        return jsonify(result), 500
+    base_url = request.host_url.rstrip('/')
+    result['share_url'] = f"{base_url}/share/{result['token']}"
+    # Generate WhatsApp & platform links
+    import urllib.parse
+    text = f"Lihat laporan aktivitas saya di ActivityOS! {result['share_url']}"
+    result['wa_url']  = f"https://wa.me/?text={urllib.parse.quote(text)}"
+    result['ig_text'] = text
+    return jsonify(result)
+
+@app.route('/share/<token>')
+def view_share(token):
+    conn = db.get_connection()
+    if not conn: return "Not found", 404
+    c = conn.cursor(dictionary=True)
+    try:
+        c.execute("""
+            SELECT sr.*, u.username, u.full_name FROM share_reports sr
+            JOIN users u ON u.id = sr.user_id
+            WHERE sr.share_token=%s
+        """, (token,))
+        report = c.fetchone()
+        if not report: return "Laporan tidak ditemukan atau sudah kadaluarsa.", 404
+        c.execute("UPDATE share_reports SET view_count=view_count+1 WHERE share_token=%s",
+                  (token,))
+        conn.commit()
+        import json
+        if isinstance(report.get('data'), str):
+            report['data'] = json.loads(report['data'])
+        return render_template('share_view.html', report=report)
+    finally:
+        c.close(); conn.close()
+
+# ═══════════════════════════════════════════════════
+# ESQ ENHANCED + WEEKLY REVIEW + ONBOARDING ROUTES
+# ═══════════════════════════════════════════════════
+
+@app.route('/api/esq/today', methods=['GET'])
+@login_required
+def api_esq_today():
+    d = request.args.get('date', date.today().isoformat())
+    data = db.get_esq_today(session['user_id'], d)
+    return jsonify(data)
+
+@app.route('/api/esq/spiritual/toggle', methods=['POST'])
+@login_required
+def api_spiritual_toggle():
+    d = request.get_json() or {}
+    result = db.toggle_spiritual(
+        session['user_id'],
+        activity = d.get('activity'),
+        date_str = d.get('date', date.today().isoformat()),
+        label    = d.get('label'),
+        quantity = d.get('quantity'),
+        unit     = d.get('unit'),
+    )
+    return jsonify(result)
+
+@app.route('/api/esq/reflection', methods=['POST'])
+@login_required
+def api_save_reflection():
+    d = request.get_json() or {}
+    result = db.save_reflection(
+        session['user_id'],
+        date_str       = d.get('date', date.today().isoformat()),
+        content        = d.get('content', ''),
+        gratitude      = d.get('gratitude'),
+        lessons        = d.get('lessons'),
+        tomorrow_intent= d.get('tomorrow_intent'),
+        mood_score     = int(d.get('mood_score', 3)),
+        energy         = int(d.get('energy', 3)),
+        ref_type       = d.get('type', 'daily'),
+    )
+    return jsonify(result)
+
+@app.route('/api/esq/values', methods=['GET'])
+@login_required
+def api_get_values():
+    conn = db.get_connection()
+    if not conn: return jsonify([])
+    c = conn.cursor(dictionary=True)
+    try:
+        c.execute("""SELECT * FROM esq_values WHERE user_id=%s AND is_active=1
+                     ORDER BY priority""", (session['user_id'],))
+        return jsonify(c.fetchall())
+    finally:
+        c.close(); conn.close()
+
+@app.route('/api/esq/values', methods=['POST'])
+@login_required
+def api_create_value():
+    d = request.get_json() or {}
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor()
+    try:
+        c.execute("""INSERT INTO esq_values
+                        (user_id, title, description, category, emoji, color, priority)
+                     VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+                  (session['user_id'], d.get('title','').strip(),
+                   d.get('description',''), d.get('category','custom'),
+                   d.get('emoji','⭐'), d.get('color','#6366f1'),
+                   int(d.get('priority', 1))))
+        conn.commit()
+        return jsonify({'ok': True, 'id': c.lastrowid}), 201
+    finally:
+        c.close(); conn.close()
+
+@app.route('/api/esq/values/<int:vid>', methods=['DELETE'])
+@login_required
+def api_delete_value(vid):
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor()
+    try:
+        c.execute("UPDATE esq_values SET is_active=0 WHERE id=%s AND user_id=%s",
+                  (vid, session['user_id']))
+        conn.commit()
+        return jsonify({'ok': True})
+    finally:
+        c.close(); conn.close()
+
+# ── Weekly Review ──────────────────────────────────
+@app.route('/api/weekly-review/generate', methods=['POST'])
+@login_required
+def api_generate_weekly_review():
+    result = db.generate_weekly_review(session['user_id'])
+    return jsonify(result)
+
+@app.route('/api/weekly-review/latest', methods=['GET'])
+@login_required
+def api_latest_weekly_review():
+    conn = db.get_connection()
+    if not conn: return jsonify({})
+    c = conn.cursor(dictionary=True)
+    try:
+        c.execute("""SELECT * FROM weekly_review_generated
+                     WHERE user_id=%s ORDER BY week_start DESC LIMIT 1""",
+                  (session['user_id'],))
+        row = c.fetchone()
+        if row:
+            for k in ['week_start','week_end']:
+                if row.get(k) and hasattr(row[k], 'isoformat'):
+                    row[k] = row[k].isoformat()
+            if row.get('top_streaks') and isinstance(row['top_streaks'], str):
+                import json; row['top_streaks'] = json.loads(row['top_streaks'])
+        return jsonify(row or {})
+    finally:
+        c.close(); conn.close()
+
+@app.route('/weekly-review')
+@login_required
+def weekly_review_page():
+    review = db.generate_weekly_review(session['user_id'])
+    xp     = db.get_user_xp(session['user_id'])
+    return render_template('weekly_review.html', review=review, xp=xp)
+
+# ── Level / XP visual ─────────────────────────────
+@app.route('/level')
+@login_required
+def level_page():
+    xp_info = db.get_user_xp(session['user_id'])
+    conn = db.get_connection()
+    logs = []
+    if conn:
+        c = conn.cursor(dictionary=True)
+        c.execute("""SELECT * FROM xp_logs WHERE user_id=%s
+                     ORDER BY earned_at DESC LIMIT 30""",
+                  (session['user_id'],))
+        logs = c.fetchall()
+        for l in logs:
+            if l.get('earned_at'): l['earned_at'] = l['earned_at'].isoformat()
+        c.close(); conn.close()
+    return render_template('level.html', xp_info=xp_info,
+                           xp_logs=logs, levels=db.LEVEL_SYSTEM)
+
+# ── Onboarding Setup ──────────────────────────────
+@app.route('/setup')
+def setup_page():
+    if 'user_id' not in session:
+        return redirect('/login')
+    profile = db.get_user_profile(session['user_id'])
+    return render_template('setup.html',
+                           profile=profile,
+                           profiles=db.PROFILE_TYPES)
+
+@app.route('/api/setup/profile', methods=['POST'])
+@login_required
+def api_save_setup():
+    d = request.get_json() or {}
+    ok = db.save_user_profile(
+        session['user_id'],
+        profile_type = d.get('profile_type','lainnya'),
+        focus_areas  = d.get('focus_areas', []),
+        work_start   = d.get('work_start','08:00'),
+        work_end     = d.get('work_end','17:00'),
+        sleep_time   = d.get('sleep_time','22:00'),
+        wake_time    = d.get('wake_time','05:00'),
+        religion     = d.get('religion'),
+    )
+    if ok:
+        # Auto-create recommended reminders based on profile
+        profile_type = d.get('profile_type','lainnya')
+        _, _, focus = db.PROFILE_TYPES.get(profile_type, ('','',['produktivitas']))
+        return jsonify({'ok': True, 'redirect': '/dashboard'})
+    return jsonify({'ok': False}), 500
+
+@app.route('/api/setup/complete', methods=['POST'])
+@login_required
+def api_setup_complete():
+    conn = db.get_connection()
+    if not conn: return jsonify({'error':'DB'}), 500
+    c = conn.cursor()
+    try:
+        c.execute("""INSERT INTO user_profile_setup (user_id, setup_complete, setup_step)
+                     VALUES (%s,TRUE,5)
+                     ON DUPLICATE KEY UPDATE setup_complete=TRUE, setup_step=5""",
+                  (session['user_id'],))
         conn.commit()
         return jsonify({'ok': True})
     finally:

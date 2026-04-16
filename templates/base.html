@@ -302,17 +302,14 @@
   /* ── MODAL ── */
   .modal-overlay {
     position:fixed; inset:0; background:rgba(0,0,0,0.72); backdrop-filter:blur(8px);
-    z-index:500; display:flex; align-items:center; justify-content:center;
+    z-index:500; display:none; align-items:center; justify-content:center;
     opacity:0; pointer-events:none;
-    visibility:hidden;
-    transition:opacity 0.25s var(--ease), visibility 0s linear 0.25s;
     padding:16px; box-sizing:border-box;
   }
   .modal-overlay.open {
-    opacity:1; pointer-events:all;
-    visibility:visible;
-    transition:opacity 0.25s var(--ease), visibility 0s linear 0s;
+    display:flex;
   }
+    .modal-overlay.open { opacity:1; pointer-events:all; }
   .modal {
     background:var(--bg-surface); border:1.5px solid var(--border-bright);
     border-radius:20px;
@@ -824,6 +821,15 @@
     <a href="{{ url_for('finance_page') }}" class="nav-link {% if request.endpoint=='finance_page' %}active{% endif %}">
       <i data-lucide="trending-up" class="nav-icon"></i> Finansial
     </a>
+    <a href="{{ url_for('boards_page') }}" class="nav-link {% if request.endpoint in ('boards_page','board_detail') %}active{% endif %}">
+      <i data-lucide="layout" class="nav-icon"></i> Boards
+    </a>
+    <a href="{{ url_for('weekly_review_page') }}" class="nav-link {% if request.endpoint=='weekly_review_page' %}active{% endif %}">
+      <i data-lucide="bar-chart" class="nav-icon"></i> Weekly Review
+    </a>
+    <a href="{{ url_for('level_page') }}" class="nav-link {% if request.endpoint=='level_page' %}active{% endif %}">
+      <i data-lucide="zap" class="nav-icon"></i> Level & XP
+    </a>
     <a href="{{ url_for('roadmap') }}" class="nav-link {% if request.endpoint=='roadmap' %}active{% endif %}">
       <i data-lucide="map" class="nav-icon"></i> Roadmap
     </a>
@@ -1122,19 +1128,24 @@ document.addEventListener('click', e => {
 function openModal(id) {
   const el = document.getElementById(id);
   if (!el) return;
-  // Step 1: make overlay visible but modal still off-screen
-  el.classList.add('open');
+  // Show overlay
+  el.style.display = 'flex';
+  el.style.opacity = '0';
   document.body.style.overflow = 'hidden';
-  // Step 2: on mobile, ensure modal slides in after overlay is painted
+  // Force reflow then fade in
+  void el.offsetHeight;
+  el.classList.add('open');
+  el.style.opacity = '1';
+  el.style.transition = 'opacity 0.2s ease';
+  // Mobile: slide up
   const modal = el.querySelector('.modal');
   if (modal && window.innerWidth <= 540) {
     modal.style.transition = 'none';
     modal.style.transform = 'translateY(100%)';
     modal.style.opacity = '1';
-    // Force paint, then animate in
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        modal.style.transition = 'transform 0.35s cubic-bezier(0.16,1,0.3,1)';
+        modal.style.transition = 'transform 0.32s cubic-bezier(0.16,1,0.3,1)';
         modal.style.transform = 'translateY(0)';
       });
     });
@@ -1144,18 +1155,20 @@ function closeModal(id) {
   const el = document.getElementById(id);
   if (!el) return;
   const modal = el.querySelector('.modal');
-  if (modal && window.innerWidth <= 540) {
-    modal.style.transition = 'transform 0.28s cubic-bezier(0.16,1,0.3,1)';
-    modal.style.transform = 'translateY(100%)';
-    setTimeout(() => {
-      el.classList.remove('open');
-      modal.style.transform = '';
-      modal.style.transition = '';
-      document.body.style.overflow = '';
-    }, 280);
-  } else {
+  const finish = () => {
     el.classList.remove('open');
+    el.style.display = 'none';
+    el.style.opacity = '';
+    el.style.transition = '';
     document.body.style.overflow = '';
+    if (modal) { modal.style.transform = ''; modal.style.transition = ''; }
+  };
+  if (modal && window.innerWidth <= 540) {
+    modal.style.transition = 'transform 0.25s cubic-bezier(0.16,1,0.3,1)';
+    modal.style.transform = 'translateY(100%)';
+    setTimeout(finish, 250);
+  } else {
+    finish();
   }
 }
 document.querySelectorAll('.modal-overlay').forEach(el => el.addEventListener('click', function(e){ if(e.target===this) closeModal(this.id); }));
@@ -1356,6 +1369,10 @@ document.addEventListener('keydown', e => {
       if (e.key==='d') { window.location='/dashboard'; window._gPressed=false; }
       if (e.key==='r') { window.location='/reminders'; window._gPressed=false; }
       if (e.key==='f') { window.location='/finance'; window._gPressed=false; }
+      if (e.key==='b') { window.location='/boards'; window._gPressed=false; }
+      if (e.key==='w') { window.location='/weekly-review'; window._gPressed=false; }
+      if (e.key==='l') { window.location='/level'; window._gPressed=false; }
+      if (e.key==='s') { window.location='/setup'; window._gPressed=false; }
       if (e.key==='t') { window.location='/tasks'; window._gPressed=false; }
       if (e.key==='r') { window.location='/roadmap'; window._gPressed=false; }
       if (e.key==='a') { window.location='/analytics'; window._gPressed=false; }
@@ -2001,19 +2018,19 @@ document.head.appendChild(style);
     </div>
     <!-- 5 emoji pills -->
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px" id="globalMoodGrid">
-      <button class="mood-pill" data-mood="😫" data-label="Exhausted" onclick="selectGlobalMood(this)">
+      <button type="button" class="mood-pill" data-mood="😫" data-label="Exhausted" onclick="selectGlobalMood(this)">
         <span>😫</span><span>Lelah</span>
       </button>
-      <button class="mood-pill" data-mood="😟" data-label="Worried" onclick="selectGlobalMood(this)">
+      <button type="button" class="mood-pill" data-mood="😟" data-label="Worried" onclick="selectGlobalMood(this)">
         <span>😟</span><span>Cemas</span>
       </button>
-      <button class="mood-pill" data-mood="😐" data-label="Neutral" onclick="selectGlobalMood(this)">
+      <button type="button" class="mood-pill" data-mood="😐" data-label="Neutral" onclick="selectGlobalMood(this)">
         <span>😐</span><span>Biasa</span>
       </button>
-      <button class="mood-pill" data-mood="😊" data-label="Happy" onclick="selectGlobalMood(this)">
+      <button type="button" class="mood-pill" data-mood="😊" data-label="Happy" onclick="selectGlobalMood(this)">
         <span>😊</span><span>Senang</span>
       </button>
-      <button class="mood-pill" data-mood="🔥" data-label="On Fire" onclick="selectGlobalMood(this)">
+      <button type="button" class="mood-pill" data-mood="🔥" data-label="On Fire" onclick="selectGlobalMood(this)">
         <span>🔥</span><span>Gasss!</span>
       </button>
     </div>
@@ -2023,7 +2040,7 @@ document.head.appendChild(style);
     </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-ghost" onclick="closeModal('globalMoodModal')" style="flex:1">Batal</button>
-      <button class="btn btn-primary" id="globalSaveMoodBtn" onclick="saveGlobalMood()" style="flex:2;justify-content:center" disabled>
+      <button type="button" class="btn btn-primary" id="globalSaveMoodBtn" onclick="saveGlobalMood()" style="flex:2;justify-content:center" disabled>
         Simpan Mood
       </button>
     </div>
