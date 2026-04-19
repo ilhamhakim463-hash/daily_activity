@@ -320,7 +320,7 @@
       {% if goal.milestones %}
       <div class="timeline">
         {% for ms in goal.milestones %}
-        {% set status = 'done' if ms.is_completed else ('in-progress' if ms.month == now().month and ms.year == now().year else 'pending') %}
+        {% set status = 'done' if ms.is_completed else ('in-progress' if ms.month == current_month and ms.year == current_year else 'pending') %}
         <div class="timeline-item">
           <div class="timeline-dot {{ status }}">
             {% if status == 'done' %}

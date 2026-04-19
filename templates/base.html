@@ -308,6 +308,8 @@
   }
   .modal-overlay.open {
     display:flex;
+    pointer-events:all;
+    opacity:1;
   }
     .modal-overlay.open { opacity:1; pointer-events:all; }
   .modal {
@@ -1128,16 +1130,9 @@ document.addEventListener('click', e => {
 function openModal(id) {
   const el = document.getElementById(id);
   if (!el) return;
-  // Show overlay
-  el.style.display = 'flex';
-  el.style.opacity = '0';
   document.body.style.overflow = 'hidden';
-  // Force reflow then fade in
-  void el.offsetHeight;
   el.classList.add('open');
-  el.style.opacity = '1';
-  el.style.transition = 'opacity 0.2s ease';
-  // Mobile: slide up
+  // Mobile: slide up animation
   const modal = el.querySelector('.modal');
   if (modal && window.innerWidth <= 540) {
     modal.style.transition = 'none';
@@ -1157,9 +1152,6 @@ function closeModal(id) {
   const modal = el.querySelector('.modal');
   const finish = () => {
     el.classList.remove('open');
-    el.style.display = 'none';
-    el.style.opacity = '';
-    el.style.transition = '';
     document.body.style.overflow = '';
     if (modal) { modal.style.transform = ''; modal.style.transition = ''; }
   };
