@@ -505,8 +505,9 @@
     text-decoration:none; transition:color 0.2s;
     position:relative; min-height:52px;
     -webkit-tap-highlight-color:transparent;
-    /* Bigger hit area on mobile */
     touch-action:manipulation;
+    -webkit-appearance:none; appearance:none;
+    outline:none;
   }
   .bn-item.active { color:var(--indigo); }
   .bn-item.active svg { filter:drop-shadow(0 0 6px var(--indigo)); }
@@ -520,12 +521,6 @@
   }
   /* FAB radial menu */
 
-
-  /* ── MOOD FAB (mobile only) ── */
-  @media (max-width:768px) {
-    #moodFabWrap { display:block !important; }
-  }
-  #moodFab:hover, #moodFab:active { transform:scale(1.12); }
 
   /* ── HOME CENTER BUTTON ── */
   .bn-home-center {
@@ -1571,6 +1566,27 @@ async function checkAdaptive() {
 {% if session.get('user_id') %}
 // Run adaptive check on every page load
 checkAdaptive();
+
+// Mobile share helper
+async function generateMobileShare() {
+  try {
+    const res  = await fetch('/api/share/generate', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ type: 'weekly_summary' })
+    });
+    const data = await res.json();
+    if (data.share_url) {
+      if (navigator.share) {
+        navigator.share({ title: 'ActivityOS — Laporan Mingguan', url: data.share_url });
+      } else {
+        navigator.clipboard.writeText(data.share_url);
+        showToast('✅ Link laporan disalin!', 'success');
+      }
+    }
+  } catch(e) {
+    showToast('Gagal generate laporan', 'error');
+  }
+}
 // Load today's mood for FAB indicator
 (async function() {
   try {
@@ -1891,17 +1907,6 @@ document.head.appendChild(style);
       </a>
     </div>
 
-    <!-- Set Mood FAB (visible on all mobile pages) -->
-    <div id="moodFabWrap" style="position:fixed;bottom:72px;right:16px;z-index:399;display:none">
-      <button onclick="openGlobalMoodModal()" id="moodFab"
-        style="width:46px;height:46px;border-radius:50%;background:var(--bg-surface);border:1.5px solid var(--border-bright);
-               box-shadow:0 4px 16px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;
-               font-size:22px;cursor:pointer;transition:transform 0.2s"
-        title="Set Mood" aria-label="Set Mood">
-        <span id="moodFabEmoji">😊</span>
-      </button>
-    </div>
-
     <!-- 4. Roadmap -->
     <a href="/roadmap" class="bn-item {% if request.endpoint=='roadmap' %}active{% endif %}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1911,13 +1916,14 @@ document.head.appendChild(style);
       Roadmap
     </a>
 
-    <!-- 5. ESQ -->
-    <a href="/esq" class="bn-item {% if request.endpoint=='isq_page' %}active{% endif %}">
+    <!-- 5. Lainnya (opens More Drawer with ALL pages) -->
+    <button class="bn-item {% if request.endpoint in ('isq_page','finance_page','boards_page','board_detail','reminders_page','weekly_review_page','level_page') %}active{% endif %}"
+            onclick="openMoreDrawer()" aria-label="Menu lainnya">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
       </svg>
-      <span style="background:linear-gradient(90deg,#d4af37,#f5e27e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700">ESQ</span>
-    </a>
+      Lainnya
+    </button>
 
   </div>
 </nav>
@@ -1957,45 +1963,78 @@ document.head.appendChild(style);
 <div class="more-drawer-overlay" id="moreDrawerOverlay" onclick="closeMoreDrawer()"></div>
 <div class="more-drawer" id="moreDrawer">
   <span class="more-drawer-handle"></span>
-  <div class="more-drawer-title">Menu Lainnya</div>
+  <div class="more-drawer-title">Menu Lengkap</div>
 
-  <!-- Grid 2 baris x 3 kolom -->
+  <!-- Baris 1: Halaman utama -->
   <div class="more-grid">
-    <!-- Row 1 -->
-    <a href="/analytics" class="more-grid-item" onclick="closeMoreDrawer()">
-      <div class="more-grid-icon" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)">📊</div>
-      <span class="more-grid-label">Analytics</span>
+    <a href="/reminders" class="more-grid-item" onclick="closeMoreDrawer()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#6366f1,#818cf8)">🔔</div>
+      <span class="more-grid-label">Pengingat</span>
     </a>
-    <button class="more-grid-item" onclick="closeMoreDrawer();openGlobalMoodModal()">
-      <div class="more-grid-icon" style="background:linear-gradient(135deg,#10b981,#34d399)">😊</div>
-      <span class="more-grid-label">Set Mood</span>
-    </button>
+    <a href="/finance" class="more-grid-item" onclick="closeMoreDrawer()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#10b981,#34d399)">💰</div>
+      <span class="more-grid-label">Finansial</span>
+    </a>
+    <a href="/boards" class="more-grid-item" onclick="closeMoreDrawer()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa)">📋</div>
+      <span class="more-grid-label">Boards</span>
+    </a>
+    <a href="/weekly-review" class="more-grid-item" onclick="closeMoreDrawer()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)">📊</div>
+      <span class="more-grid-label">Weekly Review</span>
+    </a>
+    <a href="/level" class="more-grid-item" onclick="closeMoreDrawer()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#d4af37,#f5e27e)">⚡</div>
+      <span class="more-grid-label">Level & XP</span>
+    </a>
     <a href="/esq" class="more-grid-item" onclick="closeMoreDrawer()">
       <div class="more-grid-icon" style="background:linear-gradient(135deg,#d4af37,#f5e27e)">✨</div>
       <span class="more-grid-label">ESQ</span>
     </a>
-    <!-- Row 2 -->
-    <button class="more-grid-item" onclick="closeMoreDrawer();fabGo('/tasks','noteModal')">
-      <div class="more-grid-icon" style="background:linear-gradient(135deg,#06b6d4,#22d3ee)">📝</div>
-      <span class="more-grid-label">Quick Notes</span>
+  </div>
+
+  <!-- Baris 2: Aksi cepat -->
+  <div class="more-drawer-title" style="margin-top:4px">Aksi Cepat</div>
+  <div class="more-grid">
+    <button class="more-grid-item" onclick="closeMoreDrawer();openGlobalMoodModal()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#ec4899,#f472b6)">😊</div>
+      <span class="more-grid-label">Set Mood</span>
     </button>
+    <a href="/analytics" class="more-grid-item" onclick="closeMoreDrawer()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8)">📈</div>
+      <span class="more-grid-label">Analytics</span>
+    </a>
     <a href="/export/daily" class="more-grid-item" onclick="closeMoreDrawer()">
-      <div class="more-grid-icon" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa)">📄</div>
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#64748b,#94a3b8)">📄</div>
       <span class="more-grid-label">Export PDF</span>
     </a>
+    <a href="/setup" class="more-grid-item" onclick="closeMoreDrawer()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#6366f1,#a5b4fc)">⚙️</div>
+      <span class="more-grid-label">Setup Profil</span>
+    </a>
     <button class="more-grid-item" onclick="closeMoreDrawer();openModal('profileModal')">
-      <div class="more-grid-icon" style="background:linear-gradient(135deg,#6366f1,#818cf8)">👤</div>
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#334155,#475569)">👤</div>
       <span class="more-grid-label">Profile</span>
     </button>
+    <a href="/share" class="more-grid-item" onclick="closeMoreDrawer();event.preventDefault();generateMobileShare()">
+      <div class="more-grid-icon" style="background:linear-gradient(135deg,#25D366,#128C7E)">📤</div>
+      <span class="more-grid-label">Share</span>
+    </a>
   </div>
 
   <div class="more-divider"></div>
+
   <div class="more-bottom-row">
+    <button class="more-bottom-btn" onclick="closeMoreDrawer();toggleTheme()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      Tema
+    </button>
     <a href="/logout" class="more-bottom-btn danger">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Logout
     </a>
   </div>
+</div>
 </div>
 
 <!-- ══ GLOBAL MOOD MODAL ══ -->
