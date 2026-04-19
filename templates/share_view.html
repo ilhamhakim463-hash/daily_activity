@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Laporan {{ report.username }} — ActivityOS</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:100vh;padding:20px;display:flex;flex-direction:column;align-items:center}
+.card{background:#1a1a2e;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:28px;max-width:460px;width:100%;margin:20px 0}
+.header{display:flex;align-items:center;gap:14px;margin-bottom:24px}
+.avatar{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;flex-shrink:0}
+.name{font-size:18px;font-weight:700;color:#f1f5f9}
+.sub{font-size:12px;color:#64748b;margin-top:2px}
+.logo{font-size:11px;font-weight:700;color:#6366f1;letter-spacing:1px;margin-bottom:24px}
+.stat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}
+.stat{background:rgba(255,255,255,0.04);border-radius:12px;padding:14px;text-align:center}
+.stat-val{font-size:24px;font-weight:700;color:#f1f5f9}
+.stat-lbl{font-size:10px;color:#64748b;margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.streak-row{display:flex;flex-direction:column;gap:8px}
+.streak-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:10px}
+.streak-emoji{font-size:20px;flex-shrink:0}
+.streak-info{flex:1;min-width:0}
+.streak-title{font-size:13px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.streak-val{font-size:11px;color:#64748b;margin-top:1px}
+.bar-wrap{background:rgba(255,255,255,0.06);border-radius:3px;height:4px;margin-top:4px;overflow:hidden}
+.bar-fill{height:4px;border-radius:3px;background:linear-gradient(90deg,#6366f1,#06b6d4)}
+.footer{font-size:11px;color:#475569;text-align:center;padding:12px 0}
+.cta{background:linear-gradient(135deg,#6366f1,#06b6d4);color:#fff;border:none;padding:12px 28px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;text-decoration:none;display:inline-block;margin-top:8px}
+.view-badge{font-size:10px;color:#475569;margin-top:8px}
+</style>
+</head>
+<body>
+<div style="text-align:center;padding-top:20px">
+  <div class="logo">✦ ACTIVITYOS</div>
+</div>
+
+<div class="card">
+  <div class="header">
+    <div class="avatar">{{ (report.full_name or report.username)[:1].upper() }}</div>
+    <div>
+      <div class="name">{{ report.full_name or report.username }}</div>
+      <div class="sub">
+        {% if report.type == 'weekly_summary' %}📊 Ringkasan Mingguan
+        {% elif report.type == 'streak' %}🔥 Streak Pengingat
+        {% elif report.type == 'goal_progress' %}🎯 Progress Goal
+        {% else %}📋 Laporan Aktivitas{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if report.type == 'weekly_summary' %}
+  {% set d = report.data %}
+  <div class="stat-row">
+    <div class="stat">
+      <div class="stat-val">{{ d.tasks_done }}</div>
+      <div class="stat-lbl">Task selesai</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">{{ d.tasks_total }}</div>
+      <div class="stat-lbl">Total task</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" style="font-size:18px">{{ '😊' if d.avg_mood >= 3 else '😐' }}</div>
+      <div class="stat-lbl">Rata mood</div>
+    </div>
+  </div>
+  {% set pct = (d.tasks_done / d.tasks_total * 100)|round if d.tasks_total > 0 else 0 %}
+  <div style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b;margin-bottom:6px">
+      <span>Completion rate minggu ini</span>
+      <span style="color:#6366f1;font-weight:700">{{ pct }}%</span>
+    </div>
+    <div class="bar-wrap" style="height:6px"><div class="bar-fill" style="width:{{ pct }}%;height:6px"></div></div>
+  </div>
+
+  {% elif report.type == 'streak' %}
+  <div class="streak-row">
+    {% for s in report.data.streaks %}
+    <div class="streak-item">
+      <div class="streak-emoji">{{ s.emoji }}</div>
+      <div class="streak-info">
+        <div class="streak-title">{{ s.title }}</div>
+        <div class="streak-val">{{ s.current_streak }} hari · tier {{ s.tier }}</div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:{{ [s.current_streak * 2, 100]|min }}%"></div></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% elif report.type == 'goal_progress' %}
+  <div class="streak-row">
+    {% for g in report.data.goals %}
+    <div class="streak-item">
+      <div class="streak-emoji" style="font-size:22px">{{ g.icon }}</div>
+      <div class="streak-info">
+        <div class="streak-title">{{ g.title }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<div style="text-align:center;padding:8px 0">
+  <a href="/register" class="cta">Mulai pakai ActivityOS →</a>
+  <div class="view-badge">Dilihat {{ report.view_count }} kali</div>
+</div>
+
+<div class="footer">Dibuat dengan ActivityOS · Laporan ini berlaku 7 hari</div>
+</body>
+</html>

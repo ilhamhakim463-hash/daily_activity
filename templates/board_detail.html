@@ -1,0 +1,564 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+.kanban-wrap{display:flex;gap:14px;overflow-x:auto;padding-bottom:16px;min-height:calc(100vh - 200px);align-items:flex-start}
+.kanban-wrap::-webkit-scrollbar{height:4px}.kanban-wrap::-webkit-scrollbar-track{background:transparent}.kanban-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.kb-col{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);min-width:280px;max-width:280px;display:flex;flex-direction:column;flex-shrink:0}
+.kb-col-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg-surface);border-radius:var(--radius-lg) var(--radius-lg) 0 0;z-index:2}
+.kb-col-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px}
+.kb-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.kb-count{font-size:10px;padding:1px 7px;border-radius:10px;background:var(--bg-elevated);color:var(--text-muted);font-weight:600}
+.kb-cards{padding:10px;flex:1;min-height:120px}
+.kb-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:8px;cursor:pointer;transition:all 0.15s;position:relative}
+.kb-card:hover{border-color:var(--border-bright);transform:translateY(-1px)}
+.kb-card.done{opacity:0.55}
+.kb-card-title{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:6px;line-height:1.4}
+.kb-card.done .kb-card-title{text-decoration:line-through;color:var(--text-muted)}
+.kb-card-meta{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:6px}
+.pri-badge{font-size:9px;padding:2px 6px;border-radius:5px;font-weight:700;text-transform:uppercase}
+.pri-urgent{background:#FCEBEB;color:#A32D2D}.pri-high{background:#FAEEDA;color:#854F0B}
+.pri-medium{background:#E6F1FB;color:#185FA5}.pri-low{background:#F1EFE8;color:#5F5E5A}
+.due-pill{font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:3px}
+.due-pill.overdue{color:#f43f5e}
+.subtask-mini{height:3px;background:var(--bg-overlay);border-radius:2px;margin:6px 0 0;overflow:hidden}
+.subtask-mini-fill{height:3px;border-radius:2px;background:var(--indigo)}
+.kb-add-btn{width:100%;padding:8px;border-radius:8px;border:1px dashed var(--border);background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all 0.15s;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:5px}
+.kb-add-btn:hover{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-glow)}
+.move-btn{width:22px;height:22px;border-radius:6px;border:none;background:var(--bg-overlay);color:var(--text-muted);cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s}
+.move-btn:hover{background:var(--indigo-glow);color:var(--indigo)}
+.label-chip{font-size:9px;padding:2px 7px;border-radius:6px;font-weight:600}
+.card-detail-modal .modal{max-width:500px}
+.sub-check{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
+.sub-check.done{background:var(--indigo);border-color:var(--indigo)}
+.share-btn{background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;gap:6px}
+.share-ig{background:linear-gradient(135deg,#E1306C,#833AB4);color:#fff}
+@media(max-width:768px){
+  .kanban-wrap{flex-direction:column;overflow-x:visible}
+  .kb-col{min-width:100%;max-width:100%}
+}
+.drag-ghost{opacity:0.4;background:var(--indigo-glow)!important;border:2px dashed var(--indigo)!important}
+.drag-chosen{box-shadow:0 4px 20px rgba(99,102,241,0.3);transform:rotate(1deg)}
+.drag-dragging{opacity:0.9}
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<div style="display:flex;gap:8px;align-items:center">
+  {% if board.visibility in ('team','public') and board.invite_code %}
+  <button type="button" onclick="copyInvite()" class="btn btn-ghost" style="font-size:11px;padding:6px 10px" title="Kode undangan: {{ board.invite_code }}">
+    🔗 {{ board.invite_code }}
+  </button>
+  {% endif %}
+  <button type="button" onclick="openShareModal()" class="btn btn-ghost" style="font-size:11px;padding:6px 10px">📤 Share</button>
+  <a href="/boards" class="btn btn-ghost" style="font-size:11px;padding:6px 10px">← Boards</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="page-content page-transition" style="padding-bottom:0">
+  <div class="page-header" style="margin-bottom:14px">
+    <h1 class="page-title">{{ board.emoji }} {{ board.title }}</h1>
+    {% if board.description %}<p class="page-subtitle">{{ board.description }}</p>{% endif %}
+    <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+      <span class="vis-badge vis-{{ board.visibility }}" style="font-size:11px;padding:3px 10px;border-radius:8px;background:var(--bg-elevated);color:var(--text-secondary)">
+        {{ '🔒 Private' if board.visibility=='private' else ('👥 Tim' if board.visibility=='team' else '🌐 Public') }}
+      </span>
+      {% for m in board.members %}
+      <div style="width:26px;height:26px;border-radius:50%;background:var(--indigo);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;border:2px solid var(--bg-base)" title="{{ m.full_name or m.username }}">
+        {{ (m.full_name or m.username)[:1].upper() }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Kanban board -->
+  <div class="kanban-wrap" id="kanbanWrap">
+    {% for col in board.columns %}
+    <div class="kb-col" id="col-{{ col.id }}" data-col="{{ col.id }}">
+      <div class="kb-col-head">
+        <div class="kb-col-title">
+          <span class="kb-dot" style="background:{{ col.color }}"></span>
+          {{ col.title }}
+        </div>
+        <span class="kb-count" id="count-{{ col.id }}">{{ col.cards|length }}</span>
+      </div>
+      <div class="kb-cards" id="cards-{{ col.id }}">
+        {% for card in col.cards %}
+        <div class="kb-card {{ 'done' if card.completed_at }}"
+             id="card-{{ card.id }}"
+             onclick="openCard({{ card.id }})"
+             data-card="{{ card.id }}" data-col="{{ col.id }}">
+          {% if card.label_color and card.label_text %}
+          <div class="label-chip" style="background:{{ card.label_color }}22;color:{{ card.label_color }};border:1px solid {{ card.label_color }}44;margin-bottom:5px;display:inline-block">{{ card.label_text }}</div>
+          {% endif %}
+          <div class="kb-card-title">{{ card.title }}</div>
+          {% if card.subtask_total > 0 %}
+          <div class="subtask-mini">
+            <div class="subtask-mini-fill" style="width:{{ (card.subtask_done / card.subtask_total * 100)|round }}%"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">{{ card.subtask_done }}/{{ card.subtask_total }} subtask</div>
+          {% endif %}
+          <div class="kb-card-meta">
+            <span class="pri-badge pri-{{ card.priority }}">{{ card.priority }}</span>
+            {% if card.due_date %}
+            <span class="due-pill {{ 'overdue' if card.due_date < today }}">
+              📅 {{ card.due_date }}
+            </span>
+            {% endif %}
+            {% if card.comment_count > 0 %}
+            <span style="font-size:10px;color:var(--text-muted)">💬{{ card.comment_count }}</span>
+            {% endif %}
+          </div>
+          <!-- Move buttons (mobile-friendly) -->
+          <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end" onclick="event.stopPropagation()">
+            {% set col_idx = loop.index0 %}
+            {% if not loop.first or true %}
+            <button type="button" class="move-btn" onclick="moveCardLeft({{ card.id }}, {{ col.id }})" title="Pindah kiri">◀</button>
+            <button type="button" class="move-btn" onclick="moveCardRight({{ card.id }}, {{ col.id }})" title="Pindah kanan">▶</button>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div style="padding:0 10px 10px">
+        <button type="button" class="kb-add-btn" onclick="quickAddCard({{ col.id }}, '{{ col.title }}')">
+          <i data-lucide="plus" style="width:12px;height:12px"></i> Tambah card
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- QUICK ADD CARD -->
+<div class="modal-overlay" id="quickAddModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-handle"></div>
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:14px" id="quickAddTitle">+ Card Baru</h3>
+    <input type="hidden" id="quickColId">
+    <div style="margin-bottom:12px">
+      <div class="field-label">Judul Card</div>
+      <input class="form-input" type="text" id="quickCardTitle" placeholder="Apa yang perlu dikerjakan?">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <div class="field-label">Prioritas</div>
+        <select class="form-select" id="quickPriority">
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">Due Date</div>
+        <input class="form-input" type="date" id="quickDue">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button type="button" onclick="closeModal('quickAddModal')" class="btn btn-ghost" style="flex:1">Batal</button>
+      <button type="button" onclick="submitQuickCard()" class="btn btn-primary" style="flex:2">Tambah</button>
+    </div>
+  </div>
+</div>
+
+<!-- CARD DETAIL MODAL -->
+<div class="modal-overlay card-detail-modal" id="cardDetailModal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:10px;color:var(--indigo);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px" id="cardColLabel">—</div>
+        <h3 style="font-size:16px;font-weight:700;color:var(--text-primary)" id="cardDetailTitle">—</h3>
+      </div>
+      <button type="button" onclick="closeModal('cardDetailModal')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;flex-shrink:0">×</button>
+    </div>
+
+    <!-- Card meta -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="cardMeta"></div>
+
+    <!-- Description -->
+    <div style="margin-bottom:14px" id="cardDescSection" style="display:none">
+      <div class="field-label">Deskripsi</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.5" id="cardDesc"></div>
+    </div>
+
+    <!-- Subtasks -->
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="field-label" style="margin:0">Subtask Checklist</div>
+        <button type="button" onclick="showAddSubtask()" style="font-size:11px;color:var(--indigo);background:none;border:none;cursor:pointer;font-weight:600">+ Tambah</button>
+      </div>
+      <div id="subtaskList"></div>
+      <div id="addSubtaskForm" style="display:none;margin-top:6px;display:flex;gap:6px;display:none">
+        <input class="form-input" type="text" id="newSubtaskTitle" placeholder="Nama subtask..." style="flex:1;font-size:12px;padding:6px 10px">
+        <button type="button" onclick="submitSubtask()" class="btn btn-primary" style="padding:6px 12px;font-size:12px">✓</button>
+      </div>
+    </div>
+
+    <!-- Move card -->
+    <div style="margin-bottom:14px">
+      <div class="field-label">Pindah ke kolom</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="moveButtons"></div>
+    </div>
+
+    <!-- Comments (for team boards) -->
+    <div style="margin-bottom:14px">
+      <div class="field-label">Komentar</div>
+      <div id="commentsList" style="max-height:150px;overflow-y:auto;margin-bottom:8px"></div>
+      <div style="display:flex;gap:6px">
+        <input class="form-input" type="text" id="newCommentText" placeholder="Tulis komentar..." style="flex:1;font-size:12px;padding:6px 10px" onkeypress="if(event.key==='Enter')submitComment()">
+        <button type="button" onclick="submitComment()" class="btn btn-primary" style="padding:6px 12px;font-size:12px">Kirim</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
+      <button type="button" onclick="archiveCard(_currentCardId)" class="btn btn-ghost" style="font-size:11px;color:var(--text-muted);flex:1">📦 Arsip</button>
+      <button type="button" onclick="deleteCard(_currentCardId)" class="btn btn-ghost" style="font-size:11px;color:var(--rose);flex:1">🗑 Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="shareModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-handle"></div>
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:14px">📤 Bagikan Laporan</h3>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <button type="button" onclick="generateShare('weekly_summary')" class="btn btn-ghost" style="text-align:left;padding:12px 14px;font-size:13px">
+        📊 Ringkasan mingguan — tasks, mood, progress
+      </button>
+      <button type="button" onclick="generateShare('streak')" class="btn btn-ghost" style="text-align:left;padding:12px 14px;font-size:13px">
+        🔥 Streak pengingat terbaik
+      </button>
+      <button type="button" onclick="generateShare('goal_progress')" class="btn btn-ghost" style="text-align:left;padding:12px 14px;font-size:13px">
+        🎯 Progress goal & roadmap
+      </button>
+    </div>
+    <div id="shareResult" style="display:none;padding:14px;background:var(--bg-elevated);border-radius:10px;margin-bottom:14px">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Link laporan (valid 7 hari):</div>
+      <div style="font-size:12px;color:var(--indigo);word-break:break-all;margin-bottom:10px" id="shareLink"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" onclick="copyShareLink()" class="btn btn-ghost" style="font-size:11px;padding:6px 10px;flex:1">📋 Salin Link</button>
+        <button type="button" id="waShareBtn" class="share-btn" style="flex:1;font-size:11px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          WhatsApp
+        </button>
+        <button type="button" id="igShareBtn" class="share-btn share-ig" style="flex:1;font-size:11px" onclick="copyShareLink()">
+          📸 Instagram
+        </button>
+      </div>
+    </div>
+    <button type="button" onclick="closeModal('shareModal')" class="btn btn-ghost" style="width:100%">Tutup</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const _boardId   = {{ board.id }};
+const _columns   = {{ board.columns | tojson }};
+let _currentCardId = null;
+
+// ── QUICK ADD CARD ──
+function quickAddCard(colId, colTitle) {
+  document.getElementById('quickColId').value = colId;
+  document.getElementById('quickAddTitle').textContent = '+ Card di ' + colTitle;
+  document.getElementById('quickCardTitle').value = '';
+  document.getElementById('quickDue').value = '';
+  openModal('quickAddModal');
+  setTimeout(() => document.getElementById('quickCardTitle').focus(), 350);
+}
+
+async function submitQuickCard() {
+  const title = document.getElementById('quickCardTitle').value.trim();
+  const colId = document.getElementById('quickColId').value;
+  if (!title) return showToast('Judul card wajib', 'error');
+  const res  = await fetch('/api/boards/' + _boardId + '/cards', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      title, column_id: parseInt(colId),
+      priority: document.getElementById('quickPriority').value,
+      due_date: document.getElementById('quickDue').value || null,
+    })
+  });
+  const data = await res.json();
+  if (data.ok) {
+    showToast('✅ Card ditambahkan', 'success');
+    closeModal('quickAddModal');
+    setTimeout(() => location.reload(), 400);
+  } else showToast(data.error || 'Gagal', 'error');
+}
+
+// ── MOVE CARD ──
+function getColumnIds() {
+  return _columns.map(c => c.id);
+}
+
+async function moveCard(cardId, targetColId) {
+  const res = await fetch('/api/cards/' + cardId + '/move', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ column_id: targetColId, sort_order: 0 })
+  });
+  const data = await res.json();
+  if (data.ok) {
+    if (data.is_done) showToast('✅ Selesai! +10 XP', 'success');
+    else showToast('Card dipindahkan', 'info');
+    setTimeout(() => location.reload(), 400);
+  }
+}
+
+function moveCardLeft(cardId, currentColId) {
+  const ids  = getColumnIds();
+  const idx  = ids.indexOf(currentColId);
+  if (idx > 0) moveCard(cardId, ids[idx - 1]);
+}
+
+function moveCardRight(cardId, currentColId) {
+  const ids  = getColumnIds();
+  const idx  = ids.indexOf(currentColId);
+  if (idx < ids.length - 1) moveCard(cardId, ids[idx + 1]);
+}
+
+// ── CARD DETAIL ──
+async function openCard(cardId) {
+  _currentCardId = cardId;
+  try {
+    const res  = await fetch('/api/cards/' + cardId);
+    const card = await res.json();
+
+    document.getElementById('cardDetailTitle').textContent = card.title;
+    // Col label
+    const col = _columns.find(c => c.id === card.column_id);
+    document.getElementById('cardColLabel').textContent = col ? col.title : '—';
+
+    // Meta
+    const priColors = { urgent:'#A32D2D', high:'#854F0B', medium:'#185FA5', low:'#5F5E5A' };
+    const priBg    = { urgent:'#FCEBEB', high:'#FAEEDA', medium:'#E6F1FB', low:'#F1EFE8' };
+    let meta = '<span style="font-size:10px;padding:3px 8px;border-radius:6px;background:' + (priBg[card.priority]||'#F1EFE8') + ';color:' + (priColors[card.priority]||'#5F5E5A') + ';font-weight:700;text-transform:uppercase">' + card.priority + '</span>';
+    if (card.due_date) {
+      const overdue = card.due_date < new Date().toISOString().split('T')[0];
+      meta += '<span style="font-size:11px;color:' + (overdue?'#f43f5e':'var(--text-muted)') + '">📅 ' + card.due_date + '</span>';
+    }
+    document.getElementById('cardMeta').innerHTML = meta;
+
+    // Description
+    const descSec = document.getElementById('cardDescSection');
+    if (card.description) {
+      descSec.style.display = 'block';
+      document.getElementById('cardDesc').textContent = card.description;
+    } else { descSec.style.display = 'none'; }
+
+    // Subtasks
+    renderSubtasks(card.subtasks || []);
+
+    // Move buttons
+    const moveBtns = document.getElementById('moveButtons');
+    moveBtns.innerHTML = _columns.map(c => 
+      '<button type="button" onclick="moveCard(' + cardId + ',' + c.id + ')" style="padding:5px 12px;border-radius:8px;border:1.5px solid ' + c.color + ';background:' + c.color + '22;color:' + c.color + ';font-size:11px;cursor:pointer;font-weight:600' + (c.id === card.column_id ? ';opacity:0.4;cursor:default' : '') + '"' + (c.id === card.column_id ? ' disabled' : '') + '>' + c.title + '</button>'
+    ).join('');
+
+    // Comments
+    renderComments(card.comments || []);
+
+    openModal('cardDetailModal');
+  } catch(e) {
+    showToast('Gagal memuat card', 'error');
+  }
+}
+
+function renderSubtasks(subtasks) {
+  const el = document.getElementById('subtaskList');
+  if (!subtasks.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:4px 0">Belum ada subtask</div>';
+    return;
+  }
+  const total = subtasks.length;
+  const done  = subtasks.filter(s => s.is_done).length;
+  el.innerHTML = '<div style="height:3px;background:var(--bg-elevated);border-radius:2px;margin-bottom:8px;overflow:hidden"><div style="height:3px;background:var(--indigo);border-radius:2px;width:' + Math.round(done/total*100) + '%"></div></div>' +
+    subtasks.map(s =>
+      '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">' +
+        '<div class="sub-check ' + (s.is_done?'done':'') + '" onclick="toggleSubtask(' + s.id + ',this)">' +
+        (s.is_done ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : '') +
+        '</div>' +
+        '<span style="flex:1;font-size:12px;color:var(--text-primary);' + (s.is_done?'text-decoration:line-through;opacity:0.5':'') + '">' + s.title + '</span>' +
+        '<button type="button" onclick="deleteSubtask(' + s.id + ')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px">×</button>' +
+      '</div>'
+    ).join('');
+}
+
+function renderComments(comments) {
+  const el = document.getElementById('commentsList');
+  if (!comments.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text-muted)">Belum ada komentar</div>';
+    return;
+  }
+  el.innerHTML = comments.map(c =>
+    '<div style="padding:6px 0;border-bottom:1px solid var(--border)">' +
+      '<div style="font-size:10px;color:var(--indigo);font-weight:600">' + (c.full_name || c.username) + '</div>' +
+      '<div style="font-size:12px;color:var(--text-primary)">' + c.content + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function showAddSubtask() {
+  const f = document.getElementById('addSubtaskForm');
+  f.style.display = f.style.display === 'none' ? 'flex' : 'none';
+  if (f.style.display === 'flex') document.getElementById('newSubtaskTitle').focus();
+}
+
+async function submitSubtask() {
+  const title = document.getElementById('newSubtaskTitle').value.trim();
+  if (!title) return;
+  const res  = await fetch('/api/cards/' + _currentCardId + '/subtasks', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({title})
+  });
+  const data = await res.json();
+  if (data.ok) {
+    document.getElementById('newSubtaskTitle').value = '';
+    document.getElementById('addSubtaskForm').style.display = 'none';
+    // Refresh card
+    const res2  = await fetch('/api/cards/' + _currentCardId);
+    const card2 = await res2.json();
+    renderSubtasks(card2.subtasks || []);
+  }
+}
+
+async function toggleSubtask(sid, el) {
+  const res  = await fetch('/api/subtasks/' + sid + '/toggle', { method:'POST' });
+  const data = await res.json();
+  el.classList.toggle('done', data.is_done);
+  el.innerHTML = data.is_done ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : '';
+  const row = el.parentElement;
+  const txt = row.querySelector('span');
+  if (txt) { txt.style.textDecoration = data.is_done ? 'line-through' : ''; txt.style.opacity = data.is_done ? '0.5' : '1'; }
+}
+
+async function deleteSubtask(sid) {
+  await fetch('/api/subtasks/' + sid, { method:'DELETE' });
+  const res2  = await fetch('/api/cards/' + _currentCardId);
+  const card2 = await res2.json();
+  renderSubtasks(card2.subtasks || []);
+}
+
+async function submitComment() {
+  const content = document.getElementById('newCommentText').value.trim();
+  if (!content) return;
+  await fetch('/api/cards/' + _currentCardId + '/comments', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({content})
+  });
+  document.getElementById('newCommentText').value = '';
+  const res2 = await fetch('/api/cards/' + _currentCardId);
+  const card2 = await res2.json();
+  renderComments(card2.comments || []);
+}
+
+async function archiveCard(id) {
+  await fetch('/api/cards/' + id + '/archive', { method:'POST' });
+  showToast('Card diarsipkan', 'info');
+  closeModal('cardDetailModal');
+  setTimeout(() => location.reload(), 400);
+}
+
+async function deleteCard(id) {
+  if (!confirm('Hapus card ini?')) return;
+  await fetch('/api/cards/' + id, { method:'DELETE' });
+  showToast('Card dihapus', 'info');
+  closeModal('cardDetailModal');
+  setTimeout(() => location.reload(), 400);
+}
+
+// ── SHARE ──
+function openShareModal() { openModal('shareModal'); }
+
+let _shareUrl = '';
+async function generateShare(type) {
+  const res  = await fetch('/api/share/generate', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ type })
+  });
+  const data = await res.json();
+  if (data.share_url) {
+    _shareUrl = data.share_url;
+    document.getElementById('shareLink').textContent = _shareUrl;
+    document.getElementById('shareResult').style.display = 'block';
+    const waBtn = document.getElementById('waShareBtn');
+    if (waBtn) waBtn.onclick = () => window.open(data.wa_url, '_blank');
+  } else showToast('Gagal generate laporan', 'error');
+}
+
+function copyShareLink() {
+  if (!_shareUrl) return;
+  navigator.clipboard.writeText(_shareUrl).then(() => showToast('✅ Link disalin!', 'success'));
+}
+
+function copyInvite() {
+  navigator.clipboard.writeText('{{ board.invite_code or "" }}')
+    .then(() => showToast('Kode undangan disalin: {{ board.invite_code or "" }}', 'success'));
+}
+
+// ── DRAG & DROP with SortableJS ──
+function initDragDrop() {
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) return; // Mobile uses arrow buttons instead
+
+  document.querySelectorAll('.kb-cards').forEach(container => {
+    if (typeof Sortable === 'undefined') return;
+    Sortable.create(container, {
+      group: 'kanban',
+      animation: 150,
+      ghostClass: 'drag-ghost',
+      chosenClass: 'drag-chosen',
+      dragClass: 'drag-dragging',
+      handle: '.kb-card-title',
+      onEnd: async function(evt) {
+        const cardId  = parseInt(evt.item.dataset.card);
+        const newCol  = parseInt(evt.to.closest('[data-col]').dataset.col);
+        const oldCol  = parseInt(evt.from.closest('[data-col]').dataset.col);
+        const order   = evt.newIndex;
+        if (newCol === oldCol && order === evt.oldIndex) return;
+
+        // Update count badges
+        updateColCount(oldCol);
+        updateColCount(newCol);
+
+        const res  = await fetch('/api/cards/' + cardId + '/move', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ column_id: newCol, sort_order: order })
+        });
+        const data = await res.json();
+        if (data.is_done) {
+          const card = document.getElementById('card-' + cardId);
+          if (card) card.classList.add('done');
+          showToast('✅ Card selesai! +10 XP', 'success');
+        }
+      }
+    });
+  });
+}
+
+function updateColCount(colId) {
+  const cards = document.querySelectorAll('#cards-' + colId + ' .kb-card');
+  const badge = document.getElementById('count-' + colId);
+  if (badge) badge.textContent = cards.length;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Wait for SortableJS to load
+  if (typeof Sortable !== 'undefined') {
+    initDragDrop();
+  } else {
+    const check = setInterval(() => {
+      if (typeof Sortable !== 'undefined') {
+        clearInterval(check);
+        initDragDrop();
+      }
+    }, 100);
+  }
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+{% endblock %}

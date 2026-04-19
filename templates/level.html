@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+.level-hero{text-align:center;padding:32px 20px;margin-bottom:20px}
+.level-ring-wrap{position:relative;width:140px;height:140px;margin:0 auto 16px}
+.level-ring-wrap svg{transform:rotate(-90deg)}
+.level-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.level-num{font-size:36px;font-weight:900;line-height:1}
+.level-emoji{font-size:20px;margin-top:2px}
+.level-title{font-size:22px;font-weight:800;color:var(--text-primary);margin-bottom:4px}
+.level-sub{font-size:13px;color:var(--text-muted)}
+.xp-bar-wrap{background:var(--bg-elevated);border-radius:100px;height:10px;overflow:hidden;margin:12px 0 6px;max-width:320px;margin-left:auto;margin-right:auto}
+.xp-bar-fill{height:10px;border-radius:100px;transition:width 1s cubic-bezier(0.16,1,0.3,1)}
+.xp-text{font-size:12px;color:var(--text-muted);text-align:center}
+.levels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+.lv-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;text-align:center;transition:all 0.2s;position:relative;overflow:hidden}
+.lv-card.current{border-width:2px;transform:translateY(-2px)}
+.lv-card.locked{opacity:0.4}
+.lv-card.unlocked{opacity:1}
+.lv-emoji{font-size:28px;margin-bottom:6px}
+.lv-num{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px}
+.lv-name{font-size:13px;font-weight:700;color:var(--text-primary)}
+.lv-xp{font-size:10px;color:var(--text-muted);margin-top:2px}
+.lv-badge{position:absolute;top:6px;right:6px;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:700}
+.log-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.log-item:last-child{border-bottom:none}
+.log-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:var(--indigo-glow)}
+.log-body{flex:1;min-width:0}
+.log-desc{font-size:12px;color:var(--text-primary)}
+.log-time{font-size:10px;color:var(--text-muted);margin-top:2px}
+.log-xp{font-size:13px;font-weight:700;color:var(--indigo);flex-shrink:0}
+@media(max-width:600px){.levels-grid{grid-template-columns:repeat(3,1fr)}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content page-transition">
+
+  <!-- Level Hero -->
+  <div class="level-hero animate-fade-up">
+    <div class="level-ring-wrap">
+      <svg width="140" height="140" viewBox="0 0 140 140">
+        <circle cx="70" cy="70" r="58" fill="none" stroke="var(--bg-elevated)" stroke-width="12"/>
+        <circle cx="70" cy="70" r="58" fill="none" stroke="{{ xp_info.color }}" stroke-width="12"
+          stroke-dasharray="{{ 364.4 }}"
+          stroke-dashoffset="{{ 364.4 - (364.4 * xp_info.pct / 100) }}"
+          stroke-linecap="round"/>
+      </svg>
+      <div class="level-ring-center">
+        <div class="level-num" style="color:{{ xp_info.color }}">{{ xp_info.level }}</div>
+        <div class="level-emoji">
+          {{ {'pemula':'🌱','penjelajah':'🔍','konsisten':'⚡','disiplin':'💎','produktif':'🌊','andal':'🔮','mahir':'🌸','ahli':'🔥','master':'👑','grand master':'🌟'}.get(xp_info.title.lower(),'⭐') }}
+        </div>
+      </div>
+    </div>
+    <div class="level-title" style="color:{{ xp_info.color }}">{{ xp_info.title }}</div>
+    <div class="level-sub">{{ xp_info.total_xp }} XP total</div>
+    <div class="xp-bar-wrap">
+      <div class="xp-bar-fill" style="width:{{ xp_info.pct }}%;background:{{ xp_info.color }}"></div>
+    </div>
+    <div class="xp-text">{{ xp_info.xp_to_next }} XP lagi untuk Level {{ xp_info.level + 1 }}</div>
+  </div>
+
+  <!-- All levels -->
+  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:10px">Semua Level</div>
+  <div class="levels-grid">
+    {% set emojis = {'🌱':'1','🔍':'2','⚡':'3','💎':'4','🌊':'5','🔮':'6','🌸':'7','🔥':'8','👑':'9','🌟':'10'} %}
+    {% for lvl, xp_min, xp_max, title, color, emoji in levels %}
+    {% set is_current = xp_info.level == lvl %}
+    {% set is_unlocked = xp_info.level >= lvl %}
+    <div class="lv-card {{ 'current' if is_current else ('unlocked' if is_unlocked else 'locked') }}"
+         style="{{ 'border-color:' + color + ';background:' + color + '11' if is_current else '' }}">
+      {% if is_current %}
+      <div class="lv-badge" style="background:{{ color }}22;color:{{ color }}">KAMU</div>
+      {% elif is_unlocked %}
+      <div class="lv-badge" style="background:rgba(16,185,129,0.15);color:#10b981">✓</div>
+      {% endif %}
+      <div class="lv-emoji">{{ emoji }}</div>
+      <div class="lv-num" style="color:{{ color }}">Level {{ lvl }}</div>
+      <div class="lv-name">{{ title }}</div>
+      <div class="lv-xp">{{ xp_min }}–{{ xp_max if xp_max < 99999 else '∞' }} XP</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- XP Log -->
+  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:10px;margin-top:8px">Riwayat XP (30 terakhir)</div>
+  <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px">
+    {% if xp_logs %}
+    {% set source_icons = {
+      'task_done':'✅','reminder_done':'⏰','streak_10':'🔥','streak_30':'⚡',
+      'streak_50':'💎','streak_100':'🌊','streak_200':'🔮','streak_365':'👑',
+      'saving_deposit':'💰','goal_completed':'🎯','isq_filled':'🕌',
+      'login_streak_7':'🗓','weekly_review':'📊','investment_added':'📈'
+    } %}
+    {% for log in xp_logs %}
+    <div class="log-item">
+      <div class="log-icon">{{ source_icons.get(log.source, '✦') }}</div>
+      <div class="log-body">
+        <div class="log-desc">{{ log.description or log.source }}</div>
+        <div class="log-time">{{ log.earned_at[:16].replace('T',' ') if log.earned_at else '—' }}</div>
+      </div>
+      <div class="log-xp">+{{ log.xp_amount }} XP</div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="text-align:center;padding:30px;color:var(--text-muted);font-size:12px">
+      Belum ada riwayat XP. Mulai selesaikan task dan reminder!
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- How to earn XP -->
+  <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-top:14px">
+    <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:12px">✦ Cara Dapat XP</div>
+    {% set xp_sources = [
+      ('✅ Selesaikan task','10 XP'),('⏰ Centang reminder','8 XP'),
+      ('🔥 Streak 10 hari','50 XP'),('⚡ Streak 30 hari','150 XP'),
+      ('💎 Streak 50 hari','300 XP'),('🌊 Streak 100 hari','600 XP'),
+      ('💰 Setor tabungan','15 XP'),('🎯 Goal selesai','500 XP'),
+      ('🕌 Catat ibadah','20 XP'),('📊 Weekly review','30 XP'),
+      ('📈 Tambah investasi','25 XP'),('👑 Streak 365 hari','2000 XP'),
+    ] %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      {% for label, xp in xp_sources %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg-elevated);border-radius:8px">
+        <span style="font-size:11px;color:var(--text-secondary)">{{ label }}</span>
+        <span style="font-size:11px;font-weight:700;color:var(--indigo)">{{ xp }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

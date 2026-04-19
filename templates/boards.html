@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+.board-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:24px}
+.board-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;text-decoration:none;display:block;color:inherit}
+.board-card:hover{border-color:var(--border-bright);transform:translateY(-2px)}
+.board-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--board-accent,#6366f1)}
+.board-emoji{font-size:28px;margin-bottom:8px}
+.board-title{font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:4px}
+.board-desc{font-size:11px;color:var(--text-muted);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.board-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vis-badge{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:600}
+.vis-private{background:rgba(99,102,241,0.12);color:var(--indigo)}
+.vis-team{background:rgba(16,185,129,0.12);color:#10b981}
+.vis-public{background:rgba(245,158,11,0.12);color:#f59e0b}
+.board-progress{height:3px;background:var(--bg-elevated);border-radius:2px;margin:10px 0 8px;overflow:hidden}
+.board-progress-fill{height:3px;border-radius:2px;background:var(--board-accent,#6366f1);transition:width 0.6s}
+.theme-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.field-label{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+.theme-picker{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.theme-opt{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all 0.15s;position:relative}
+.theme-opt.selected,.theme-opt:hover{border-color:var(--text-primary);transform:scale(1.15)}
+.join-section{background:var(--bg-elevated);border-radius:var(--radius-lg);padding:16px;margin-bottom:20px;border:1px dashed var(--border)}
+@media(max-width:600px){.board-grid{grid-template-columns:1fr}.form-row-2{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-primary" onclick="openModal('createBoardModal')" style="padding:8px 14px;font-size:12px">
+  <i data-lucide="plus" style="width:14px;height:14px"></i> Board Baru
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="page-content page-transition">
+  <div class="page-header">
+    <h1 class="page-title">📋 Boards</h1>
+    <p class="page-subtitle">Todo, Doing, Done — personal maupun tim</p>
+  </div>
+
+  <!-- XP Bar -->
+  <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+    <div style="width:34px;height:34px;border-radius:50%;background:{{ xp_info.color }}22;border:2px solid {{ xp_info.color }};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:{{ xp_info.color }};flex-shrink:0">{{ xp_info.level }}</div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="font-weight:600;color:var(--text-primary)">Lv.{{ xp_info.level }} {{ xp_info.title }}</span>
+        <span style="color:var(--text-muted)">{{ xp_info.total_xp }} XP · {{ xp_info.xp_to_next }} lagi</span>
+      </div>
+      <div style="background:var(--bg-elevated);border-radius:4px;height:4px;overflow:hidden">
+        <div style="height:4px;background:{{ xp_info.color }};border-radius:4px;width:{{ xp_info.pct }}%;transition:width 0.8s"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Join board section -->
+  <div class="join-section">
+    <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px">🔗 Gabung Board Tim</div>
+    <div style="display:flex;gap:8px">
+      <input class="form-input" type="text" id="inviteCodeInput" placeholder="Masukkan kode undangan (8 karakter)" maxlength="8" style="flex:1;text-transform:uppercase;letter-spacing:2px;font-weight:600">
+      <button onclick="joinBoard()" class="btn btn-primary" style="padding:8px 16px;font-size:12px;flex-shrink:0">Gabung</button>
+    </div>
+  </div>
+
+  <!-- Board filter tabs -->
+  <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="btn btn-ghost active" id="filterAll" onclick="filterBoards('all',this)" style="font-size:12px;padding:6px 12px">Semua</button>
+    <button class="btn btn-ghost" id="filterPersonal" onclick="filterBoards('personal',this)" style="font-size:12px;padding:6px 12px">Personal</button>
+    <button class="btn btn-ghost" id="filterTeam" onclick="filterBoards('team',this)" style="font-size:12px;padding:6px 12px">Tim</button>
+  </div>
+
+  <!-- Board grid -->
+  <div class="board-grid" id="boardGrid">
+    {% if boards %}
+      {% for b in boards %}
+      {% set accent = {'default':'#6366f1','forest':'#1D9E75','sunset':'#EF9F27','ocean':'#378ADD','cherry':'#D4537E','minimal':'#5F5E5A','gold':'#d4af37'} %}
+      {% set color = accent.get(b.theme, '#6366f1') %}
+      {% set pct = (b.done_count / b.card_count * 100) | round if b.card_count > 0 else 0 %}
+      <a href="/boards/{{ b.id }}" class="board-card" style="--board-accent:{{ color }}" data-type="{{ b.type }}">
+        <div class="board-emoji">{{ b.emoji }}</div>
+        <div class="board-title">{{ b.title }}</div>
+        {% if b.description %}<div class="board-desc">{{ b.description }}</div>{% endif %}
+        <div class="board-progress"><div class="board-progress-fill" style="width:{{ pct }}%"></div></div>
+        <div class="board-meta">
+          <span class="vis-badge vis-{{ b.visibility }}">
+            {{ '🔒 Private' if b.visibility=='private' else ('👥 Tim' if b.visibility=='team' else '🌐 Public') }}
+          </span>
+          <span style="font-size:10px;color:var(--text-muted)">{{ b.card_count }} card · {{ b.done_count }} selesai</span>
+          {% if b.user_role != 'owner' %}
+          <span style="font-size:10px;color:var(--text-muted)">· {{ b.user_role }}</span>
+          {% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    {% else %}
+      <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-muted)">
+        <div style="font-size:48px;margin-bottom:14px">📋</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px">Belum ada board</div>
+        <div style="font-size:12px">Klik "Board Baru" untuk mulai, atau gabung board tim</div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- CREATE BOARD MODAL -->
+<div class="modal-overlay" id="createBoardModal">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <h3 style="font-size:16px;font-weight:700">📋 Board Baru</h3>
+      <button type="button" onclick="closeModal('createBoardModal')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:20px">×</button>
+    </div>
+
+    <div class="form-row-2">
+      <div>
+        <div class="field-label">Nama Board</div>
+        <input class="form-input" type="text" id="boardTitle" placeholder="Sprint Q2, Project A...">
+      </div>
+      <div>
+        <div class="field-label">Emoji</div>
+        <input class="form-input" type="text" id="boardEmoji" value="📋" maxlength="4" style="font-size:18px;width:80px">
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div class="field-label">Deskripsi (opsional)</div>
+      <input class="form-input" type="text" id="boardDesc" placeholder="Deskripsi singkat board">
+    </div>
+
+    <div class="form-row-2">
+      <div>
+        <div class="field-label">Tipe</div>
+        <select class="form-select" id="boardType">
+          <option value="personal">👤 Personal</option>
+          <option value="project">🎯 Project</option>
+          <option value="team">👥 Tim</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">Visibilitas</div>
+        <select class="form-select" id="boardVisibility">
+          <option value="private">🔒 Private</option>
+          <option value="team">👥 Tim (undangan)</option>
+          <option value="public">🌐 Public</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div class="field-label">Link ke Goal (opsional)</div>
+      <select class="form-select" id="boardGoal">
+        <option value="">— Tidak terhubung —</option>
+        {% for g in goals %}<option value="{{ g.id }}">{{ g.icon }} {{ g.title }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <div style="margin-bottom:18px">
+      <div class="field-label">Tema Warna</div>
+      <div class="theme-picker" id="boardThemePicker">
+        {% for name, colors in [('default','#6366f1'),('forest','#1D9E75'),('sunset','#EF9F27'),('ocean','#378ADD'),('cherry','#D4537E'),('minimal','#5F5E5A'),('gold','#d4af37')] %}
+        <div class="theme-opt {{ 'selected' if loop.first }}" style="background:{{ colors }}" data-theme="{{ name }}" onclick="selectTheme(this)" title="{{ name|title }}"></div>
+        {% endfor %}
+      </div>
+      <input type="hidden" id="boardTheme" value="default">
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button type="button" onclick="closeModal('createBoardModal')" class="btn btn-ghost" style="flex:1">Batal</button>
+      <button type="button" onclick="createBoard()" class="btn btn-primary" style="flex:2">Buat Board</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterBoards(type, btn) {
+  document.querySelectorAll('[id^=filter]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#boardGrid .board-card').forEach(card => {
+    card.style.display = (type === 'all' || card.dataset.type === type) ? '' : 'none';
+  });
+}
+
+function selectTheme(el) {
+  document.querySelectorAll('.theme-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('boardTheme').value = el.dataset.theme;
+}
+
+async function createBoard() {
+  const title = document.getElementById('boardTitle').value.trim();
+  if (!title) return showToast('Nama board wajib diisi', 'error');
+  const res = await fetch('/api/boards', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      title,
+      emoji      : document.getElementById('boardEmoji').value,
+      description: document.getElementById('boardDesc').value,
+      type       : document.getElementById('boardType').value,
+      visibility : document.getElementById('boardVisibility').value,
+      theme      : document.getElementById('boardTheme').value,
+      goal_id    : document.getElementById('boardGoal').value || null,
+    })
+  });
+  const data = await res.json();
+  if (res.ok) {
+    showToast('✅ Board dibuat!', 'success');
+    closeModal('createBoardModal');
+    setTimeout(() => window.location.href = '/boards/' + data.id, 600);
+  } else {
+    showToast(data.error || 'Gagal membuat board', 'error');
+  }
+}
+
+async function joinBoard() {
+  const code = document.getElementById('inviteCodeInput').value.trim().toUpperCase();
+  if (code.length !== 8) return showToast('Kode harus 8 karakter', 'error');
+  const res  = await fetch('/api/boards/join', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ invite_code: code })
+  });
+  const data = await res.json();
+  if (res.ok) {
+    showToast('✅ Bergabung ke board: ' + data.title, 'success');
+    setTimeout(() => window.location.href = '/boards/' + data.board_id, 700);
+  } else {
+    showToast(data.error || 'Kode tidak valid', 'error');
+  }
+}
+</script>
+{% endblock %}

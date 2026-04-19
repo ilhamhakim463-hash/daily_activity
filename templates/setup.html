@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Setup Profil — ActivityOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.setup-wrap{width:100%;max-width:500px}
+.step-bar{display:flex;gap:6px;margin-bottom:28px}
+.step-dot{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,0.1);transition:background 0.3s}
+.step-dot.active{background:#6366f1}
+.step-dot.done{background:#10b981}
+.card{background:#1a1a2e;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:28px}
+.step{display:none}.step.active{display:block}
+.step-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#6366f1;margin-bottom:8px}
+.step-title{font-size:22px;font-weight:800;color:#f1f5f9;margin-bottom:6px}
+.step-sub{font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.5}
+.profile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+.profile-opt{background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px 10px;text-align:center;cursor:pointer;transition:all 0.2s}
+.profile-opt:hover{border-color:#6366f1;background:rgba(99,102,241,0.08)}
+.profile-opt.selected{border-color:#6366f1;background:rgba(99,102,241,0.12)}
+.profile-emoji{font-size:32px;margin-bottom:8px}
+.profile-name{font-size:12px;font-weight:600;color:#e2e8f0}
+.focus-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.focus-chip{padding:8px 14px;border-radius:20px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);font-size:12px;font-weight:500;color:#94a3b8;cursor:pointer;transition:all 0.2s;user-select:none}
+.focus-chip.selected{border-color:#6366f1;background:rgba(99,102,241,0.15);color:#818cf8}
+.time-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.field-label{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+.time-input{background:#252535;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 14px;color:#e2e8f0;font-size:14px;font-family:'Outfit',sans-serif;width:100%;outline:none}
+.time-input:focus{border-color:#6366f1}
+.btn-next{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#6366f1,#06b6d4);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;transition:opacity 0.2s;margin-top:8px}
+.btn-next:hover{opacity:0.9}
+.btn-skip{width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:'Outfit',sans-serif;margin-top:8px}
+.relig-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.logo{text-align:center;font-size:13px;font-weight:800;color:#6366f1;letter-spacing:1px;margin-bottom:20px}
+@media(max-width:480px){.profile-grid{grid-template-columns:repeat(3,1fr)}.time-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="setup-wrap">
+  <div class="logo">✦ ACTIVITYOS</div>
+  <div class="step-bar">
+    <div class="step-dot active" id="dot-1"></div>
+    <div class="step-dot" id="dot-2"></div>
+    <div class="step-dot" id="dot-3"></div>
+    <div class="step-dot" id="dot-4"></div>
+    <div class="step-dot" id="dot-5"></div>
+  </div>
+
+  <div class="card">
+    <!-- STEP 1: Profile type -->
+    <div class="step active" id="step-1">
+      <div class="step-label">Langkah 1 dari 5</div>
+      <div class="step-title">Kamu siapa? 👋</div>
+      <div class="step-sub">Pilih profil yang paling sesuai. Ini membantu kami menyiapkan template terbaik untukmu.</div>
+      <div class="profile-grid" id="profileGrid">
+        {% for key, val in profiles.items() %}
+        <div class="profile-opt" data-profile="{{ key }}" onclick="selectProfile(this)">
+          <div class="profile-emoji">{{ val[0] }}</div>
+          <div class="profile-name">{{ val[1] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      <button class="btn-next" onclick="goStep(2)">Lanjut →</button>
+    </div>
+
+    <!-- STEP 2: Focus areas -->
+    <div class="step" id="step-2">
+      <div class="step-label">Langkah 2 dari 5</div>
+      <div class="step-title">Fokus utamamu apa? 🎯</div>
+      <div class="step-sub">Pilih 2-4 area yang paling penting untukmu sekarang.</div>
+      <div class="focus-grid" id="focusGrid">
+        {% for area in ['Ibadah','Keluarga','Karir','Kesehatan','Produktivitas','Finansial','Akademik','Bisnis','Sosial','Seni','Olahraga','Membaca'] %}
+        <div class="focus-chip" onclick="toggleFocus(this)">{{ area }}</div>
+        {% endfor %}
+      </div>
+      <button class="btn-next" onclick="goStep(3)">Lanjut →</button>
+      <button class="btn-skip" onclick="goStep(3)">Lewati</button>
+    </div>
+
+    <!-- STEP 3: Agama/Spiritual -->
+    <div class="step" id="step-3">
+      <div class="step-label">Langkah 3 dari 5</div>
+      <div class="step-title">Latar spiritual? 🕌</div>
+      <div class="step-sub">Ini opsional — membantu kami menyiapkan tracker ibadah yang relevan.</div>
+      <div class="relig-grid">
+        {% for r in ['Islam','Kristen','Katolik','Hindu','Buddha','Lainnya','Tidak isi'] %}
+        <div class="focus-chip" data-religion="{{ r if r != 'Tidak isi' else '' }}" onclick="selectReligion(this)">{{ r }}</div>
+        {% endfor %}
+      </div>
+      <button class="btn-next" onclick="goStep(4)">Lanjut →</button>
+      <button class="btn-skip" onclick="goStep(4)">Lewati</button>
+    </div>
+
+    <!-- STEP 4: Schedule -->
+    <div class="step" id="step-4">
+      <div class="step-label">Langkah 4 dari 5</div>
+      <div class="step-title">Jadwal harianmu ⏰</div>
+      <div class="step-sub">Kami pakai ini untuk mengatur waktu reminder agar tidak mengganggu.</div>
+      <div class="time-row">
+        <div>
+          <div class="field-label">Jam bangun tidur</div>
+          <input class="time-input" type="time" id="wakeTime" value="05:00">
+        </div>
+        <div>
+          <div class="field-label">Jam tidur</div>
+          <input class="time-input" type="time" id="sleepTime" value="22:00">
+        </div>
+      </div>
+      <div class="time-row">
+        <div>
+          <div class="field-label">Mulai kerja/belajar</div>
+          <input class="time-input" type="time" id="workStart" value="08:00">
+        </div>
+        <div>
+          <div class="field-label">Selesai kerja/belajar</div>
+          <input class="time-input" type="time" id="workEnd" value="17:00">
+        </div>
+      </div>
+      <button class="btn-next" onclick="goStep(5)">Lanjut →</button>
+    </div>
+
+    <!-- STEP 5: Done -->
+    <div class="step" id="step-5">
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:60px;margin-bottom:16px">🎉</div>
+        <div class="step-title" style="margin-bottom:8px">Siap berangkat!</div>
+        <div class="step-sub" style="margin-bottom:24px">
+          Profil kamu sudah tersimpan. Kami akan menyiapkan<br>
+          template reminder dan goal yang sesuai.
+        </div>
+        <button class="btn-next" onclick="finishSetup()" style="max-width:280px;margin:0 auto">
+          Mulai pakai ActivityOS ✦
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let _profile = '';
+let _focusAreas = [];
+let _religion = '';
+
+function selectProfile(el) {
+  document.querySelectorAll('.profile-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  _profile = el.dataset.profile;
+}
+
+function toggleFocus(el) {
+  el.classList.toggle('selected');
+  const val = el.textContent.trim().toLowerCase();
+  if (el.classList.contains('selected')) {
+    _focusAreas.push(val);
+  } else {
+    _focusAreas = _focusAreas.filter(f => f !== val);
+  }
+}
+
+function selectReligion(el) {
+  document.querySelectorAll('.relig-grid .focus-chip').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  _religion = el.dataset.religion || '';
+}
+
+function goStep(n) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+  document.querySelectorAll('.step-dot').forEach((d, i) => {
+    d.classList.toggle('done', i < n - 1);
+    d.classList.toggle('active', i === n - 1);
+  });
+}
+
+async function finishSetup() {
+  try {
+    const res = await fetch('/api/setup/profile', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        profile_type: _profile || 'lainnya',
+        focus_areas : _focusAreas,
+        religion    : _religion,
+        wake_time   : document.getElementById('wakeTime').value,
+        sleep_time  : document.getElementById('sleepTime').value,
+        work_start  : document.getElementById('workStart').value,
+        work_end    : document.getElementById('workEnd').value,
+      })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      window.location.href = data.redirect || '/dashboard';
+    }
+  } catch(e) {
+    window.location.href = '/dashboard';
+  }
+}
+</script>
+</body>
+</html>

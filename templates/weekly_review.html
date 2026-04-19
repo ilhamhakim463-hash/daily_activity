@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+.wr-hero{background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(6,182,212,0.08));border:1px solid rgba(99,102,241,0.2);border-radius:var(--radius-lg);padding:24px;margin-bottom:20px;text-align:center}
+.wr-week{font-size:12px;color:var(--text-muted);margin-bottom:4px}
+.wr-title{font-size:22px;font-weight:800;color:var(--text-primary);margin-bottom:6px}
+.wr-highlight{font-size:13px;color:var(--indigo);font-weight:600}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px}
+.stat-box{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;text-align:center}
+.stat-val{font-size:28px;font-weight:800;color:var(--text-primary);line-height:1}
+.stat-lbl{font-size:10px;color:var(--text-muted);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.stat-sub{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.section-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px}
+.section-title{font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.streak-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.streak-item:last-child{border-bottom:none}
+.mood-bar{height:8px;background:var(--bg-elevated);border-radius:4px;overflow:hidden;margin-top:4px}
+.mood-fill{height:8px;border-radius:4px}
+.xp-badge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(6,182,212,0.1));border:1px solid rgba(99,102,241,0.3);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;color:var(--indigo)}
+.share-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.share-wa{background:#25D366;color:#fff;border:none;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;gap:7px}
+.share-copy{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-primary);padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif}
+.circle-prog{position:relative;width:80px;height:80px;flex-shrink:0}
+.circle-prog svg{transform:rotate(-90deg)}
+.circle-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--text-primary)}
+.regen-btn{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-secondary);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif}
+@media(max-width:600px){.stat-grid{grid-template-columns:1fr 1fr}}
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<button class="regen-btn" onclick="regenerate()">🔄 Update</button>
+{% endblock %}
+
+{% block content %}
+<div class="page-content page-transition">
+  <div class="page-header">
+    <h1 class="page-title">📊 Weekly Review</h1>
+    <p class="page-subtitle">Ringkasan otomatis perjalananmu minggu ini</p>
+  </div>
+
+  {% if review and not review.get('error') %}
+  <!-- Hero card -->
+  <div class="wr-hero animate-fade-up">
+    <div class="wr-week">{{ review.week_start }} — {{ review.week_end }}</div>
+    <div class="wr-title">Minggu yang {{ 'Luar Biasa! 🔥' if review.tasks_done > 5 else ('Baik! ⚡' if review.tasks_done > 2 else 'Dilewati 🌱') }}</div>
+    <div class="wr-highlight">{{ review.highlight }}</div>
+    <div class="xp-badge" style="margin:12px auto 0;width:fit-content">
+      ✦ +{{ review.xp_earned }} XP minggu ini
+    </div>
+  </div>
+
+  <!-- Stats grid -->
+  <div class="stat-grid animate-fade-up">
+    <div class="stat-box">
+      {% set task_pct = (review.tasks_done / review.tasks_total * 100)|round if review.tasks_total > 0 else 0 %}
+      <div class="stat-val" style="color:var(--indigo)">{{ review.tasks_done }}</div>
+      <div class="stat-lbl">Task selesai</div>
+      <div class="stat-sub">dari {{ review.tasks_total }} · {{ task_pct }}%</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:#10b981">{{ review.reminders_pct }}%</div>
+      <div class="stat-lbl">Reminder</div>
+      <div class="stat-sub">konsistensi</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:#f59e0b">{{ review.avg_mood|round(1) }}</div>
+      <div class="stat-lbl">Rata mood</div>
+      <div class="stat-sub">dari skala 5</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:#8b5cf6">{{ review.spiritual_score }}</div>
+      <div class="stat-lbl">Ibadah</div>
+      <div class="stat-sub">aktivitas dicatat</div>
+    </div>
+  </div>
+
+  <!-- Progress visual -->
+  <div class="section-card animate-fade-up">
+    <div class="section-title">📈 Progress Visual</div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <!-- Task completion ring -->
+      {% set task_pct2 = (review.tasks_done / review.tasks_total * 100)|round if review.tasks_total > 0 else 0 %}
+      <div style="text-align:center">
+        <div class="circle-prog">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="32" fill="none" stroke="var(--bg-elevated)" stroke-width="8"/>
+            <circle cx="40" cy="40" r="32" fill="none" stroke="#6366f1" stroke-width="8"
+              stroke-dasharray="{{ 201.1 }}" stroke-dashoffset="{{ 201.1 - (201.1 * task_pct2 / 100) }}"
+              stroke-linecap="round"/>
+          </svg>
+          <div class="circle-val">{{ task_pct2 }}%</div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Tasks</div>
+      </div>
+      <!-- Reminder ring -->
+      <div style="text-align:center">
+        <div class="circle-prog">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="32" fill="none" stroke="var(--bg-elevated)" stroke-width="8"/>
+            <circle cx="40" cy="40" r="32" fill="none" stroke="#10b981" stroke-width="8"
+              stroke-dasharray="201.1" stroke-dashoffset="{{ 201.1 - (201.1 * review.reminders_pct / 100) }}"
+              stroke-linecap="round"/>
+          </svg>
+          <div class="circle-val" style="font-size:13px">{{ review.reminders_pct|round|int }}%</div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Reminder</div>
+      </div>
+      <!-- Mood bar -->
+      <div style="flex:1;min-width:150px">
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">Rata-rata mood minggu ini</div>
+        <div class="mood-bar">
+          <div class="mood-fill" style="width:{{ (review.avg_mood / 5 * 100)|round }}%;background:{{ '#10b981' if review.avg_mood >= 4 else ('#f59e0b' if review.avg_mood >= 3 else '#f43f5e') }}"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:3px">
+          <span>😫</span><span>😐</span><span>🔥</span>
+        </div>
+        {% if review.saving_amount > 0 %}
+        <div style="margin-top:10px;font-size:12px;color:#10b981;font-weight:600">
+          💰 Tabungan minggu ini: Rp {{ '{:,.0f}'.format(review.saving_amount) }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Top streaks -->
+  {% if review.top_streaks %}
+  <div class="section-card animate-fade-up">
+    <div class="section-title">🔥 Top Streak Minggu Ini</div>
+    {% for s in review.top_streaks %}
+    <div class="streak-item">
+      <span style="font-size:20px">{{ s.emoji }}</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--text-primary)">{{ s.title }}</div>
+        <div style="font-size:11px;color:var(--text-muted)">{{ s.current_streak }} hari · tier {{ s.tier }}</div>
+      </div>
+      <div style="font-size:18px">{{ {'pemula':'🌱','konsisten':'🔥','momentum':'⚡','disiplin':'💎','century':'🌊','master':'🔮','setahun':'👑'}.get(s.tier,'🌱') }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Share section -->
+  <div class="section-card animate-fade-up">
+    <div class="section-title">📤 Bagikan Review Ini</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+      Bagikan pencapaian mingguanmu ke teman atau media sosial
+    </div>
+    <div class="share-row">
+      <button onclick="shareWA()" class="share-wa">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        WhatsApp
+      </button>
+      <button onclick="shareLink()" class="share-copy">📋 Salin Link</button>
+      <button onclick="shareText()" class="share-copy">✏️ Salin Teks</button>
+    </div>
+  </div>
+
+  {% else %}
+  <div style="text-align:center;padding:60px 20px;color:var(--text-muted)">
+    <div style="font-size:48px;margin-bottom:14px">📊</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:6px">Review belum tersedia</div>
+    <div style="font-size:12px;margin-bottom:16px">Klik Update untuk generate review mingguan</div>
+    <button onclick="regenerate()" class="btn btn-primary">Generate Sekarang</button>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const _review = {{ review | tojson }};
+
+async function regenerate() {
+  showToast('Generating weekly review...', 'info');
+  const res = await fetch('/api/weekly-review/generate', { method: 'POST' });
+  if (res.ok) {
+    showToast('✅ Review diperbarui!', 'success');
+    setTimeout(() => location.reload(), 600);
+  }
+}
+
+async function shareLink() {
+  const res  = await fetch('/api/share/generate', {
+    method: 'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ type: 'weekly_summary' })
+  });
+  const data = await res.json();
+  if (data.share_url) {
+    navigator.clipboard.writeText(data.share_url);
+    showToast('✅ Link disalin!', 'success');
+  }
+}
+
+async function shareWA() {
+  const res  = await fetch('/api/share/generate', {
+    method: 'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ type: 'weekly_summary' })
+  });
+  const data = await res.json();
+  if (data.wa_url) window.open(data.wa_url, '_blank');
+}
+
+function shareText() {
+  const r = _review;
+  if (!r) return;
+  const taskPct = r.tasks_total > 0 ? Math.round(r.tasks_done / r.tasks_total * 100) : 0;
+  const text = [
+    '📊 Weekly Review ActivityOS',
+    `📅 ${r.week_start} — ${r.week_end}`,
+    '',
+    `✅ Task selesai: ${r.tasks_done}/${r.tasks_total} (${taskPct}%)`,
+    `⏰ Reminder: ${r.reminders_pct}% konsisten`,
+    `😊 Mood rata-rata: ${r.avg_mood}/5`,
+    r.spiritual_score > 0 ? `🕌 Ibadah: ${r.spiritual_score} aktivitas` : '',
+    r.xp_earned > 0 ? `✦ +${r.xp_earned} XP` : '',
+    '',
+    r.highlight || '',
+    '',
+    '— Tracked with ActivityOS'
+  ].filter(Boolean).join('\n');
+  navigator.clipboard.writeText(text);
+  showToast('✅ Teks disalin!', 'success');
+}
+</script>
+{% endblock %}
